@@ -16,6 +16,4 @@ public class User extends EntityBase<Long> {
     private String mail;
     private String password;
     private Date dateOfBirth;
-
-    
 }
