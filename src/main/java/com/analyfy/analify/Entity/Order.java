@@ -5,12 +5,14 @@ import java.util.Date;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToOne;
-import lombok.Data;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class Order extends EntityBase<Long>{
@@ -18,7 +20,7 @@ public class Order extends EntityBase<Long>{
     private Date shipDate;
 
     @ManyToOne(fetch=FetchType.LAZY)
-    private adminStore adminstore;
+    private Caissier caissier;
 
     @ManyToOne(fetch=FetchType.LAZY)
     private OrderItems orderitem;

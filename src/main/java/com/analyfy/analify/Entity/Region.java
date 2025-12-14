@@ -2,21 +2,20 @@ package com.analyfy.analify.Entity;
 
 import java.util.List;
 
-import jakarta.persistence.OneToMany;
-
-
 import jakarta.persistence.Entity;
-import jakarta.persistence.OneToOne;
-import lombok.Data;
+import jakarta.persistence.OneToMany;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class Region extends EntityBase<Long>{
-    @OneToMany(mappedBy="Region")
+    @OneToMany(mappedBy="region")
     private List<State> states;
     private String name;
 }
