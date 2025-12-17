@@ -1,27 +1,16 @@
 package com.analyfy.analify.DTO;
 
 
-import jakarta.persistence.FetchType;
-import jakarta.persistence.ManyToOne;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.Data;
 
 
-@Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-public class ProductDTO extends EntityBaseDTO<Long>{
-    private String name;
+@Data
+public class ProductDTO {
+    private Long productId;
+    private String productName;
     
-    @ManyToOne(fetch=FetchType.LAZY)
-    private SubCategoryDTO subCategory;
-
-    @ManyToOne(fetch=FetchType.LAZY)
-    private ProductItemsDTO productitem;
-
-    @ManyToOne(fetch=FetchType.LAZY)
-    private OrderItemsDTO orderitem;
+    // Flattened Category Info for easy filtering
+    private Long subId;
+    private String subName;
+    private String categoryName;
 }

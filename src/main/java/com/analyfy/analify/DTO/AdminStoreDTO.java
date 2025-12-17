@@ -8,11 +8,11 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class CaissierDTO extends UserDTO {
+public class AdminStoreDTO extends UserDTO {
     private LocalDate dateStarted;
     private Double salaire;
-
-    // Flattened Store Info (No nested objects)
-    private Long storeId;
-    private String storeName; 
+    
+    // ID of the store they manage
+    private Long managedStoreId;
+    private String managedStoreName;
 }

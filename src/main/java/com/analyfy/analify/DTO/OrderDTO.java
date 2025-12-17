@@ -1,28 +1,28 @@
 package com.analyfy.analify.DTO;
 
-import java.util.Date;
+import java.time.LocalDate;
+import java.util.List;
 
-import jakarta.persistence.FetchType;
-import jakarta.persistence.ManyToOne;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.Data;
 
+@Data
+public class OrderDTO {
+    private Long orderId;
+    private LocalDate orderDate;
+    private LocalDate shipDate;
 
-@Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-public class OrderDTO extends EntityBaseDTO<Long>{
-    private Date orderDate;
-    private Date shipDate;
-
-    @ManyToOne(fetch=FetchType.LAZY)
-    private CaissierDTO caissier;
-
-    @ManyToOne(fetch=FetchType.LAZY)
-    private OrderItemsDTO orderitem;
-
+    // Who sold it?
+    private Long cashierId;
+    private String cashierName;
     
+    // Where was it sold?
+    private Long storeId;
+    private String storeName;
+
+    // Financials
+    private Double totalAmount; // Calculated sum of items
+    private Integer totalItems; // Count of items
+    
+    // Details
+    private List<OrderItemDTO> items;
 }

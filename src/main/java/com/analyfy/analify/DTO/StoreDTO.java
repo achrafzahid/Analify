@@ -1,29 +1,21 @@
 package com.analyfy.analify.DTO;
 
-import java.util.List;
+import lombok.Data;
 
-import jakarta.persistence.FetchType;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-public class StoreDTO extends EntityBaseDTO<Long> {
-    @OneToOne
-    private adminStoreDTO adminStore;
-    @OneToMany(mappedBy="store")
-    private List<CaissierDTO> caissier;
-    @OneToOne
-    private CityDTO city;
+@Data
+public class StoreDTO {
+    private Long storeId;
+    
+    // Location Context
+    private Long cityId;
+    private String cityName;
+    private String regionName; // Useful for grouping in charts
 
-    @ManyToOne(fetch=FetchType.LAZY)
-    private ProductItemsDTO productitem;
+    // Manager Context
+    private Long managerId;
+    private String managerName;
 
+    // Analytics (Calculated fields)
+    private Integer employeeCount; 
 }

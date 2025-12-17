@@ -1,22 +1,13 @@
 package com.analyfy.analify.DTO;
 
-import jakarta.persistence.FetchType;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
-
-@Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-public class CityDTO extends EntityBaseDTO<Long> {
-    @OneToOne
-    private StoreDTO store;
-    @ManyToOne(fetch=FetchType.LAZY)
-    private StateDTO state;
+import lombok.Data;
+@Data
+public class CityDTO {
+    private Long cityId;
     private String name;
+    
+    // Hierarchical Context for Analytics
+    private Long stateId;
+    private String stateName;
+    private String regionName; 
 }

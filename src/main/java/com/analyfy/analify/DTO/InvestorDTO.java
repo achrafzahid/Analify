@@ -2,11 +2,11 @@ package com.analyfy.analify.DTO;
 
 
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-@Getter
-@Setter
-public class InvestorDTO extends UserDTO{
-    
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class InvestorDTO extends UserDTO {
+    // Specific fields for Investor if needed later
 }
