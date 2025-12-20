@@ -17,13 +17,13 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "\"order\"")
+@Table(name = "\"orders\"")
 @Getter @Setter
 public class Order {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
+    @Column(name = "order_id")
     private Long orderId;
 
     @Column(name = "order_date")
@@ -32,17 +32,13 @@ public class Order {
     @Column(name = "ship_date")
     private LocalDate shipDate;
 
-    // Diagram shows "user_id" in Order table, and line points to Caissier
+    // The ONLY path to the Store is through this employee
     @ManyToOne
     @JoinColumn(name = "user_id") 
     private Caissier caissier;
 
-    // Diagram shows line between Store and Order
-    // We assume there is an implicit store_id or it passes through Caissier
-    @ManyToOne
-    @JoinColumn(name = "store_id")
-    private Store store;
-
+    // Removed direct Store connection
+    
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItems> items;
 }

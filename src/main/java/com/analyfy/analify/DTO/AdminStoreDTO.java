@@ -10,7 +10,7 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class AdminStoreDTO extends UserDTO {
     private LocalDate dateStarted;
-    private Double salaire;
+    private Double salary;
     
     // ID of the store they manage
     private Long managedStoreId;

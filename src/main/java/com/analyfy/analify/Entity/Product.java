@@ -21,14 +21,14 @@ public class Product {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
+    @Column(name = "product_id")
     private Long productId;
 
     @Column(name = "product_name")
     private String productName;
 
     @ManyToOne
-    @JoinColumn(name = "sub_id")
+    @JoinColumn(name = "subcategory_id")
     private Subcategory subcategory;
     
     // Reverse connection for analytics (Optional but useful)

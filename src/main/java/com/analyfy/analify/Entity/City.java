@@ -21,9 +21,10 @@ public class City {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
+    @Column(name = "city_id")
     private Long cityId;
 
+    @Column(name = "city_name")
     private String name;
 
     @ManyToOne

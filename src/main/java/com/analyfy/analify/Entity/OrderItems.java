@@ -18,7 +18,7 @@ public class OrderItems {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID") // Diagram has item_id as PK, mapped to ID col
+    @Column(name = "item_id") // Diagram has item_id as PK, mapped to ID col
     private Long itemId;
 
     @ManyToOne

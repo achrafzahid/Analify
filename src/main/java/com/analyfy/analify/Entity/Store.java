@@ -1,5 +1,6 @@
 package com.analyfy.analify.Entity;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.persistence.Column;
@@ -22,28 +23,33 @@ public class Store {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
+    @Column(name = "store_id")
     private Long storeId;
 
-    // Connection to Location
     @ManyToOne
     @JoinColumn(name = "city_id")
     private City city;
 
-    // Connection to Manager (User)
-    @OneToOne
-    @JoinColumn(name = "user_id") // Diagram shows store has user_id
+    // THE INVERSE OWNER (Manager)
+    @OneToOne(mappedBy = "managedStore") 
     private AdminStore manager;
 
-    // Connection to Employees
+    // The Link to Orders is now hidden inside here
     @OneToMany(mappedBy = "store")
-    private List<Caissier> employees;
+    private List<Caissier> employees = new ArrayList<>();
 
-    // Connection to Inventory
     @OneToMany(mappedBy = "store")
-    private List<Inventory> inventory;
+    private List<Inventory> inventory = new ArrayList<>();
 
-    // Connection to Orders (Diagram line exists between Store and Order)
-    @OneToMany(mappedBy = "store")
-    private List<Order> orders;
+    // Removed direct Orders list
+
+    // ==========================================
+    // HELPER METHOD (Syncs Manager)
+    // ==========================================
+    public void setManager(AdminStore manager) {
+        this.manager = manager;
+        if (manager != null && manager.getManagedStore() != this) {
+            manager.setManagedStore(this);
+        }
+    }
 }
