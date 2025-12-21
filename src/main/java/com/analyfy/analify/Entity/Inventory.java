@@ -12,7 +12,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "prodcut_items")
+@Table(name = "inventory")
 @Getter @Setter
 public class Inventory {
 
@@ -29,6 +29,6 @@ public class Inventory {
     @JoinColumn(name = "product_id")
     private Product product;
 
-    @Column(name = "Quantité")
+    @Column(name = "quantity")
     private Integer quantity;
 }
