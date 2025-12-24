@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,12 +16,13 @@ import lombok.Setter;
 @Entity
 @Table(name = "caissier")
 @Getter @Setter
+@PrimaryKeyJoinColumn(name = "user_id")
 public class Caissier extends User {
 
     @Column(name = "date_started")
     private LocalDate dateStarted;
-    
-    private Double salaire;
+    @Column(name="salaire")
+    private Double salary;
 
     // Connection 1: The Store this cashier works at
     @ManyToOne

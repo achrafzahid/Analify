@@ -30,6 +30,12 @@ public class Product {
     @ManyToOne
     @JoinColumn(name = "subcategory_id")
     private Subcategory subcategory;
+
+    @ManyToOne
+    @JoinColumn(name="id_inv")
+    private Investor id_inv;
+
+
     
     // Reverse connection for analytics (Optional but useful)
     @OneToMany(mappedBy = "product")

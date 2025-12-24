@@ -31,7 +31,7 @@ public class Store {
     private City city;
 
     // THE INVERSE OWNER (Manager)
-    @OneToOne(mappedBy = "managedStore") 
+    @OneToOne(mappedBy = "store") 
     private AdminStore manager;
 
     // The Link to Orders is now hidden inside here
@@ -48,8 +48,8 @@ public class Store {
     // ==========================================
     public void setManager(AdminStore manager) {
         this.manager = manager;
-        if (manager != null && manager.getManagedStore() != this) {
-            manager.setManagedStore(this);
+        if (manager != null && manager.getStore() != this) {
+            manager.setstore(this);
         }
     }
 }

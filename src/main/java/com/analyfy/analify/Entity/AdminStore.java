@@ -6,6 +6,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,6 +14,8 @@ import lombok.Setter;
 @Entity
 @Table(name = "admin_store")
 @Getter @Setter
+@PrimaryKeyJoinColumn(name = "user_id")
+//@DiscriminatorValue("ADMIN_STORE")
 public class AdminStore extends User {
 
     @Column(name = "date_started")
@@ -25,16 +28,16 @@ public class AdminStore extends User {
     // 'unique = true' ensures one Admin cannot manage multiple Stores.
     @OneToOne
     @JoinColumn(name = "store_id", unique = true)
-    private Store managedStore;
+    private Store store;
 
     // ==========================================
     // HELPER METHOD (Syncs both sides)
     // ==========================================
-    public void setManagedStore(Store managedStore) {
-        this.managedStore = managedStore;
+    public void setstore(Store store) {
+        this.store = store;
         // If the other side doesn't know about me yet, tell it.
-        if (managedStore != null && managedStore.getManager() != this) {
-            managedStore.setManager(this);
+        if (store != null && store.getManager() != this) {
+            store.setManager(this);
         }
     }
 }

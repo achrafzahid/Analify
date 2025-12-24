@@ -13,6 +13,6 @@ public class AdminStoreDTO extends UserDTO {
     private Double salary;
     
     // ID of the store they manage
-    private Long managedStoreId;
-    private String managedStoreName;
+    private Long storeId;
+    private String storeName;
 }
