@@ -34,7 +34,7 @@ public class Order {
 
     // The ONLY path to the Store is through this employee
     @ManyToOne
-    @JoinColumn(name = "user_id") 
+    @JoinColumn(name = "user_id", nullable = false) 
     private Caissier caissier;
 
     // Removed direct Store connection

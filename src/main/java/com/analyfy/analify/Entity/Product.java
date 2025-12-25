@@ -31,6 +31,10 @@ public class Product {
     @JoinColumn(name = "subcategory_id")
     private Subcategory subcategory;
 
+    @Column(name="price")
+    private Double price;
+
+    
     @ManyToOne
     @JoinColumn(name="id_inv")
     private Investor id_inv;

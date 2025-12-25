@@ -11,6 +11,7 @@ public class ProductDTO {
     
     // Flattened Category Info for easy filtering
     private Long subId;
+    private Double price;
     private String subName;
     private String categoryName;
 }
