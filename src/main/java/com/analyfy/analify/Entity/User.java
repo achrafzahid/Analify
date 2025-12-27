@@ -16,12 +16,13 @@ import lombok.Setter;
 @Entity
 @Table(name = "\"user\"") // "user" is a reserved keyword in Postgres
 @Inheritance(strategy = InheritanceType.JOINED)
+//@DiscriminatorColumn(name = "user_type", discriminatorType = DiscriminatorType.STRING)
 @Getter @Setter
 public abstract class User {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
+    @Column(name = "user_id")
     private Long userId;
 
     @Column(name = "user_name")

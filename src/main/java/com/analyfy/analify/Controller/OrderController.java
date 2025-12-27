@@ -10,10 +10,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -27,13 +32,67 @@ public class OrderController {
      * POST /api/orders - Créer une nouvelle commande
      */
     @PostMapping
-    public ResponseEntity<OrderDTO> createOrder(@Valid @RequestBody CreateOrderRequest request) {
+    public ResponseEntity<?> createOrder(@Valid @RequestBody CreateOrderRequest request) {
         try {
+            System.out.println("📦 Réception requête createOrder");
+            System.out.println("   CashierId: " + request.getCashierId());
+            System.out.println("   Nombre d'items: " + request.getItems().size());
+            
+            for (int i = 0; i < request.getItems().size(); i++) {
+                var item = request.getItems().get(i);
+                System.out.println("   Item " + i + ":");
+                System.out.println("      - productName: " + item.getProductName());
+                System.out.println("      - quantity: " + item.getQuantity());
+                System.out.println("      - discount: " + item.getDiscount());
+            }
+            
             OrderDTO createdOrder = orderService.createOrder(request);
+            System.out.println("✅ Commande créée avec succès: " + createdOrder.getOrderId());
             return ResponseEntity.status(HttpStatus.CREATED).body(createdOrder);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            System.err.println("❌ Erreur création commande: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            error.put("type", e.getClass().getSimpleName());
+            return ResponseEntity.badRequest().body(error);
         }
+    }
+
+    /**
+     * ExceptionHandler pour les erreurs de validation
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, String>> handleValidationExceptions(
+            MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        
+        ex.getBindingResult().getAllErrors().forEach((error) -> {
+            String fieldName = ((FieldError) error).getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+            System.err.println("⚠️ Validation échouée: " + fieldName + " -> " + errorMessage);
+        });
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+    }
+
+    /**
+     * ExceptionHandler pour les erreurs de parsing JSON
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, String>> handleJsonParseException(
+            HttpMessageNotReadableException ex) {
+        Map<String, String> error = new HashMap<>();
+        
+        String message = ex.getMostSpecificCause().getMessage();
+        error.put("error", "JSON invalide");
+        error.put("details", message);
+        
+        System.err.println("🔴 Erreur parsing JSON: " + message);
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
     /**

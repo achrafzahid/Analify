@@ -38,72 +38,72 @@ public class OrderService {
      */
     @Transactional
     public OrderDTO createOrder(CreateOrderRequest request) {
-        // 1. Valider et récupérer le caissier
-        Caissier caissier = caissierRepository.findById(request.getCashierId())
-            .orElseThrow(() -> new RuntimeException("Caissier non trouvé avec l'ID: " + request.getCashierId()));
+    // 1. Valider et récupérer le caissier
+    Caissier caissier = caissierRepository.findById(request.getCashierId())
+        .orElseThrow(() -> new RuntimeException("Caissier non trouvé avec l'ID: " + request.getCashierId()));
 
-        // 2. Vérifier que le caissier a un magasin assigné
-        Store store = caissier.getStore();
-        if (store == null) {
-            throw new RuntimeException("Le caissier n'est assigné à aucun magasin");
-        }
-
-        // 3. Créer l'entité Order
-        Order order = new Order();
-        order.setOrderDate(LocalDate.now());
-        order.setShipDate(LocalDate.now()); // Peut être modifié selon la logique métier
-        order.setCaissier(caissier);
-
-        // 4. Récupérer tous les inventaires du magasin une seule fois (optimisation)
-        List<Inventory> storeInventories = productItemsRepository.findByStoreStoreId(store.getStoreId());
-
-        // 5. Créer les OrderItems
-        List<OrderItems> orderItemsList = new ArrayList<>();
-        
-        for (OrderItemRequest itemRequest : request.getItems()) {
-            // Récupérer le produit
-            Product product = productRepository.findById(itemRequest.getProductId())
-                .orElseThrow(() -> new RuntimeException("Produit non trouvé avec l'ID: " + itemRequest.getProductId()));
-
-            // Chercher l'inventaire correspondant dans la liste
-            Inventory inventory = storeInventories.stream()
-                .filter(inv -> inv.getProduct().getProductId().equals(product.getProductId()))
-                .findFirst()
-                .orElse(null);
-
-            if (inventory == null) {
-                throw new RuntimeException("Produit '" + product.getProductName() + "' non disponible dans ce magasin");
-            }
-
-            if (inventory.getQuantity() < itemRequest.getQuantity()) {
-                throw new RuntimeException("Stock insuffisant pour le produit '" + product.getProductName() + 
-                    "'. Disponible: " + inventory.getQuantity() + ", Demandé: " + itemRequest.getQuantity());
-            }
-
-            // Créer l'OrderItem
-            OrderItems orderItem = new OrderItems();
-            orderItem.setOrder(order);
-            orderItem.setProduct(product);
-            orderItem.setQuantity(itemRequest.getQuantity());
-           // orderItem.setPrice(product.getSellingPrice()); // Prix de vente actuel du magasin
-            orderItem.setDiscount(itemRequest.getDiscount() != null ? itemRequest.getDiscount() : 0.0);
-
-            orderItemsList.add(orderItem);
-
-            // Mettre à jour le stock
-            inventory.setQuantity(inventory.getQuantity() - itemRequest.getQuantity());
-            productItemsRepository.save(inventory);
-        }
-
-        // 6. Associer les items à la commande
-        order.setItems(orderItemsList);
-
-        // 7. Sauvegarder la commande (cascade sauvegarde les items)
-        Order savedOrder = orderRepository.save(order);
-
-        // 8. Convertir en DTO et retourner
-        return orderMapper.toDto(savedOrder);
+    // 2. Vérifier que le caissier a un magasin assigné
+    Store store = caissier.getStore();
+    if (store == null) {
+        throw new RuntimeException("Le caissier n'est assigné à aucun magasin");
     }
+
+    // 3. Créer l'entité Order
+    Order order = new Order();
+    order.setOrderDate(LocalDate.now());
+    order.setShipDate(LocalDate.now());
+    order.setCaissier(caissier);
+
+    // 4. Récupérer tous les inventaires du magasin
+    List<Inventory> storeInventories = productItemsRepository.findByStoreStoreId(store.getStoreId());
+
+    // 5. Créer les OrderItems
+    List<OrderItems> orderItemsList = new ArrayList<>();
+    
+    for (OrderItemRequest itemRequest : request.getItems()) {
+        // ✅ Récupérer le produit par son NOM au lieu de l'ID
+        Product product = productRepository.findByProductNameIgnoreCase(itemRequest.getProductName())
+            .orElseThrow(() -> new RuntimeException("Produit non trouvé: " + itemRequest.getProductName()));
+
+        // Chercher l'inventaire correspondant
+        Inventory inventory = storeInventories.stream()
+            .filter(inv -> inv.getProduct().getProductId().equals(product.getProductId()))
+            .findFirst()
+            .orElse(null);
+
+        if (inventory == null) {
+            throw new RuntimeException("Produit '" + product.getProductName() + "' non disponible dans ce magasin");
+        }
+
+        if (inventory.getQuantity() < itemRequest.getQuantity()) {
+            throw new RuntimeException("Stock insuffisant pour le produit '" + product.getProductName() + 
+                "'. Disponible: " + inventory.getQuantity() + ", Demandé: " + itemRequest.getQuantity());
+        }
+
+        // Créer l'OrderItem
+        OrderItems orderItem = new OrderItems();
+        orderItem.setOrder(order);
+        orderItem.setProduct(product);
+        orderItem.setQuantity(itemRequest.getQuantity());
+        orderItem.setPrice(60.67); // Prix à modifier
+        orderItem.setDiscount(itemRequest.getDiscount() != null ? itemRequest.getDiscount() : 0.0);
+
+        orderItemsList.add(orderItem);
+
+        // Mettre à jour le stock
+        inventory.setQuantity(inventory.getQuantity() - itemRequest.getQuantity());
+        productItemsRepository.save(inventory);
+    }
+
+    // 6. Associer les items à la commande
+    order.setItems(orderItemsList);
+
+    // 7. Sauvegarder la commande
+    Order savedOrder = orderRepository.save(order);
+
+    // 8. Convertir en DTO et retourner
+    return orderMapper.toDto(savedOrder);
+}
 
     /**
      * Récupérer une commande par ID

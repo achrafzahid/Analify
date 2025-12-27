@@ -9,7 +9,7 @@ import com.analyfy.analify.Entity.AdminStore;
 @Mapper(componentModel = "spring")
 public interface AdminStoreMapper extends BaseMapper<AdminStoreDTO, AdminStore> {
     @Override
-    @Mapping(source = "managedStore.storeId", target = "managedStoreId")
-    @Mapping(source = "managedStore.city.name", target = "managedStoreName")
+    @Mapping(source = "store.storeId", target = "storeId")
+    @Mapping(source = "store.city.name", target = "storeName")
     AdminStoreDTO toDto(AdminStore entity);
 }

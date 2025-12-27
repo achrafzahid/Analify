@@ -8,4 +8,6 @@ import com.analyfy.analify.Entity.User;
 
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByMail(String mail);
+
+    boolean existsByMail(String mail);
 }
