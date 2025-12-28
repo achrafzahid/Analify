@@ -49,7 +49,7 @@ public class Store {
     public void setManager(AdminStore manager) {
         this.manager = manager;
         if (manager != null && manager.getStore() != this) {
-            manager.setstore(this);
+            manager.setStore(this);
         }
     }
 }

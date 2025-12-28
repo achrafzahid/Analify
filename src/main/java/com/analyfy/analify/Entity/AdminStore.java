@@ -33,7 +33,7 @@ public class AdminStore extends User {
     // ==========================================
     // HELPER METHOD (Syncs both sides)
     // ==========================================
-    public void setstore(Store store) {
+    public void setStore(Store store) {
         this.store = store;
         // If the other side doesn't know about me yet, tell it.
         if (store != null && store.getManager() != this) {

@@ -33,4 +33,7 @@ public class Caissier extends User {
     // Mapped by the "caissier" field in the Order class
     @OneToMany(mappedBy = "caissier")
     private List<Order> orders;
+
+
+    
 }

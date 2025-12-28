@@ -14,6 +14,9 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 @Entity
 @Table(name = "product")
 @Getter @Setter
@@ -29,6 +32,7 @@ public class Product {
 
     @ManyToOne
     @JoinColumn(name = "subcategory_id")
+    @JsonIgnoreProperties({"category", "products"})
     private Subcategory subcategory;
 
     @Column(name="price")
@@ -37,11 +41,14 @@ public class Product {
     
     @ManyToOne
     @JoinColumn(name="id_inv")
+    @JsonIgnore
     private Investor id_inv;
 
 
     
     // Reverse connection for analytics (Optional but useful)
-    @OneToMany(mappedBy = "product")
+    @OneToMany(mappedBy = "product", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true) // 🟢 Add Cascade
+    @JsonIgnore
     private List<Inventory> stocks;
+
 }

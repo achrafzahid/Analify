@@ -29,6 +29,7 @@ public class Inventory {
     @JoinColumn(name = "product_id")
     private Product product;
 
-    @Column(name = "quantity")
+    @Column(name = "quantity")  
     private Integer quantity;
+
 }

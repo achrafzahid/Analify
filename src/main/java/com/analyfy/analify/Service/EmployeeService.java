@@ -324,7 +324,7 @@ public class EmployeeService {
                 AdminStore as = new AdminStore();
                 UserMapper.updateEntity(as, dto);
                 as.setPassword(passwordEncoder.encode(dto.getPassword()));
-                as.setstore(storeRepository.findById(dto.getStoreId()).orElseThrow());
+                as.setStore(storeRepository.findById(dto.getStoreId()).orElseThrow());
                 as.setSalary(dto.getSalary());
                 return adminStoreRepository.save(as);
             case CAISSIER:
