@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +25,7 @@ import com.analyfy.analify.Service.EmployeeService;
 import lombok.RequiredArgsConstructor;
 
 
+
 @RestController
 @RequestMapping("/api/employees")
 @RequiredArgsConstructor
@@ -34,68 +36,68 @@ public class EmployeeController {
     // SECURITY NOTE:
     // currently actingUser params are passed via Headers.
     // In future JWT impl, remove these args and use:
-    // Long actingUserId = ((CustomUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getId();
+    // Long userId = ((CustomUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getId();
 
     @GetMapping("/getall")
     public ResponseEntity<List<EmployeeResponseDTO>> getAllEmployees(
-            @RequestHeader("X-Acting-User-Id") Long actingUserId,
-            @RequestHeader("X-Acting-User-Role") UserRole actingUserRole) {
-        return ResponseEntity.ok(employeeService.getAllEmployees(actingUserId, actingUserRole));
+        @RequestAttribute("userId") Long userId,
+        @RequestAttribute("role") UserRole role) {
+        return ResponseEntity.ok(employeeService.getAllEmployees(userId, role));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<EmployeeResponseDTO> getEmployeeById(
-            @RequestHeader("X-Acting-User-Id") Long actingUserId,
-            @RequestHeader("X-Acting-User-Role") UserRole actingUserRole,
+        @RequestAttribute("userId") Long userId,
+        @RequestAttribute("role") UserRole role,
             @PathVariable Long id) {
-        return ResponseEntity.ok(employeeService.getEmployeeById(actingUserId, actingUserRole, id));
+        return ResponseEntity.ok(employeeService.getEmployeeById(userId, role, id));
     }
 
     @GetMapping("/store/{storeId}")
     public ResponseEntity<List<EmployeeResponseDTO>> getStoreEmployees(
-            @RequestHeader("X-Acting-User-Id") Long actingUserId,
-            @RequestHeader("X-Acting-User-Role") UserRole actingUserRole,
+        @RequestAttribute("userId") Long userId,
+        @RequestAttribute("role") UserRole role,
             @PathVariable Long storeId) {
-        return ResponseEntity.ok(employeeService.getStoreEmployees(actingUserId, actingUserRole, storeId));
+        return ResponseEntity.ok(employeeService.getStoreEmployees(userId, role, storeId));
     }
 
     @PostMapping("/add")
     public ResponseEntity<EmployeeResponseDTO> createEmployee(
-            @RequestHeader("X-Acting-User-Id") Long actingUserId,
-            @RequestHeader("X-Acting-User-Role") UserRole actingUserRole,
+        @RequestAttribute("userId") Long userId,
+        @RequestAttribute("role") UserRole role,
             @RequestBody EmployeeCreateDTO dto) {
         return new ResponseEntity<>(
-                employeeService.createEmployee(actingUserId, actingUserRole, dto),
+                employeeService.createEmployee(userId, role, dto),
                 HttpStatus.CREATED
         );
     }
 
     @PutMapping("/{id}/assign-role")
     public ResponseEntity<Void> assignRole(
-            @RequestHeader("X-Acting-User-Id") Long actingUserId,
-            @RequestHeader("X-Acting-User-Role") UserRole actingUserRole,
+        @RequestAttribute("userId") Long userId,
+        @RequestAttribute("role") UserRole role,
             @PathVariable Long id,
             @RequestParam UserRole newRole,
             @RequestParam(required = false) Long storeId) {
-        employeeService.assignRoleToUser(actingUserId, actingUserRole, id, newRole, storeId);
+        employeeService.assignRoleToUser(userId, role, id, newRole, storeId);
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<EmployeeResponseDTO> updateEmployee(
-            @RequestHeader("X-Acting-User-Id") Long actingUserId,
-            @RequestHeader("X-Acting-User-Role") UserRole actingUserRole,
+        @RequestAttribute("userId") Long userId,
+        @RequestAttribute("role") UserRole role,
             @PathVariable Long id,
             @RequestBody EmployeeUpdateDTO dto) {
-        return ResponseEntity.ok(employeeService.updateEmployee(actingUserId, actingUserRole, id, dto));
+        return ResponseEntity.ok(employeeService.updateEmployee(userId, role, id, dto));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEmployee(
-            @RequestHeader("X-Acting-User-Id") Long actingUserId,
-            @RequestHeader("X-Acting-User-Role") UserRole actingUserRole,
+        @RequestAttribute("userId") Long userId,
+        @RequestAttribute("role") UserRole role,
             @PathVariable Long id) {
-        employeeService.deleteEmployee(actingUserId, actingUserRole, id);
+        employeeService.deleteEmployee(userId, role, id);
         return ResponseEntity.noContent().build();
     }
 }

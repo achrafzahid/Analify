@@ -29,8 +29,8 @@ public class OrderController {
      */
     @PostMapping
     public ResponseEntity<?> createOrder( // 👈 Change return type to <?> to allow Error Map
-            @RequestHeader("X-Acting-User-Id") Long userId,
-            @RequestHeader("X-Acting-User-Role") UserRole role,
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
             @Valid @RequestBody CreateOrderRequest request) {
         try {
             OrderDTO createdOrder = orderService.createOrder(userId, role, request);
@@ -47,8 +47,8 @@ public class OrderController {
      */
     @GetMapping
     public ResponseEntity<List<OrderDTO>> getOrders(
-            @RequestHeader("X-Acting-User-Id") Long userId,
-            @RequestHeader("X-Acting-User-Role") UserRole role,
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
             @RequestParam(required = false) Long filterStoreId,
             @RequestParam(required = false) Long filterRegionId,
             @RequestParam(required = false) Long filterStateId,
@@ -66,8 +66,8 @@ public class OrderController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<OrderDTO> getOrderById(
-            @RequestHeader("X-Acting-User-Id") Long userId,
-            @RequestHeader("X-Acting-User-Role") UserRole role,
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
             @PathVariable Long id) {
         try {
             OrderDTO order = orderService.getOrderById(userId, role, id);
@@ -83,8 +83,8 @@ public class OrderController {
      */
     @PatchMapping("/{id}/ship-date")
     public ResponseEntity<OrderDTO> updateOrder(
-            @RequestHeader("X-Acting-User-Id") Long userId,
-            @RequestHeader("X-Acting-User-Role") UserRole role,
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
             @PathVariable Long id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate shipDate) {
         try {
@@ -101,8 +101,8 @@ public class OrderController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteOrder(
-            @RequestHeader("X-Acting-User-Id") Long userId,
-            @RequestHeader("X-Acting-User-Role") UserRole role,
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
             @PathVariable Long id) {
         try {
             orderService.deleteOrder(userId, role, id);

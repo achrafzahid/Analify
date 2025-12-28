@@ -23,8 +23,8 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<List<ProductDTO>> getProducts(
-            @RequestHeader("X-Acting-User-Id") Long userId,
-            @RequestHeader("X-Acting-User-Role") UserRole role,
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
             @RequestParam(required = false) Long filterStoreId,
             @RequestParam(required = false) Long filterStateId,
             @RequestParam(required = false) Long filterRegionId) {
@@ -33,8 +33,8 @@ public class ProductController {
 
     @PostMapping
     public ResponseEntity<?> createProduct(
-            @RequestHeader("X-Acting-User-Id") Long userId,
-            @RequestHeader("X-Acting-User-Role") UserRole role,
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
             @Valid @RequestBody CreateProductRequest request) { // 🟢 Uses standard DTO
         try {
             return ResponseEntity.status(HttpStatus.CREATED)
@@ -48,8 +48,8 @@ public class ProductController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ProductDTO> updateProduct(
-            @RequestHeader("X-Acting-User-Id") Long userId,
-            @RequestHeader("X-Acting-User-Role") UserRole role,
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
             @PathVariable Long id,
             @RequestBody UpdateProductRequest request) { // 🟢 Uses standard DTO
         try {
@@ -61,8 +61,8 @@ public class ProductController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(
-            @RequestHeader("X-Acting-User-Id") Long userId,
-            @RequestHeader("X-Acting-User-Role") UserRole role,
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
             @PathVariable Long id) {
         try {
             productService.deleteProduct(userId, role, id);
@@ -74,8 +74,8 @@ public class ProductController {
 
     @PutMapping("/{id}/stock")
     public ResponseEntity<InventoryDTO> updateProductStock(
-            @RequestHeader("X-Acting-User-Id") Long userId,
-            @RequestHeader("X-Acting-User-Role") UserRole role,
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
             @PathVariable Long id,
             @Valid @RequestBody UpdateStockRequest request) { // 🟢 Uses standard DTO
         try {
@@ -87,8 +87,8 @@ public class ProductController {
 
     @GetMapping("/alerts/low-stock")
     public ResponseEntity<List<LowStockAlertDTO>> getLowStockAlerts(
-            @RequestHeader("X-Acting-User-Id") Long userId,
-            @RequestHeader("X-Acting-User-Role") UserRole role) {
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role) {
         try {
             return ResponseEntity.ok(productService.getInvestorLowStockReport(userId, role));
         } catch (RuntimeException e) {
