@@ -20,4 +20,9 @@ public class Investor extends User {
 
     @OneToMany(mappedBy="id_inv")
     List<Product> products;
+
+    // pour la section 
+    @OneToMany(mappedBy = "winnerInvestor")
+    private List<Section> wonSections;
+
 }
