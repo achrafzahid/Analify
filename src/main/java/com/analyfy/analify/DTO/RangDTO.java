@@ -3,13 +3,16 @@ package com.analyfy.analify.DTO;
 import lombok.Data;
 
 @Data
-public class CategoryDTO {
+public class RangDTO {
+    private Long rangId;
+    private String rangName;
+    private String description;
+    
+    // Info Category
     private Long categoryId;
     private String categoryName;
     
     // Statistiques
-    private Integer totalRangs;
     private Integer totalFaces;
-    private Integer totalSections;
-    private Integer activeBids;
+    private Integer availableSections;
 }

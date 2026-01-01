@@ -41,6 +41,9 @@ public class Store {
     @OneToMany(mappedBy = "store")
     private List<Inventory> inventory = new ArrayList<>();
 
+   /*  @OneToMany(mappedBy="store")
+    private List<Section> sections;*/
+
     // Removed direct Orders list
 
     // ==========================================
