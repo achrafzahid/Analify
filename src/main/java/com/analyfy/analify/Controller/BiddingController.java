@@ -2,6 +2,7 @@ package com.analyfy.analify.Controller;
 
 import com.analyfy.analify.DTO.*;
 import com.analyfy.analify.DTO.Bids.*;
+import com.analyfy.analify.Enum.UserRole;
 import com.analyfy.analify.Service.BiddingService;
 import com.analyfy.analify.Service.CategoryService;
 import com.analyfy.analify.Service.RangService;
@@ -34,11 +35,11 @@ public class BiddingController {
     
     /**
      * GET /api/bidding/categories
-     * Étape 1: Voir toutes les catégories avec sections ouvertes
+     * Étape 1: Voir toutes les catégories
      */
     @GetMapping("/categories")
     public ResponseEntity<List<CategoryDTO>> getAllCategories() {
-        List<CategoryDTO> categories = categoryService.getCategoriesWithOpenSections();
+        List<CategoryDTO> categories = categoryService.getAllCategories();
         return ResponseEntity.ok(categories);
     }
     
@@ -119,8 +120,18 @@ public class BiddingController {
      * Placer une nouvelle enchère
      */
     @PostMapping("/bids")
-    public ResponseEntity<?> placeBid(@Valid @RequestBody CreateBidRequest request) {
+    public ResponseEntity<?> placeBid(
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
+            @Valid @RequestBody CreateBidRequest request) {
         try {
+            // Verify user is an investor
+            if (role != UserRole.INVESTOR) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Only investors can place bids");
+            }
+            // Ensure the bid is placed by the authenticated user
+            request.setInvestorId(userId);
             BidDTO bid = biddingService.addBid(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(bid);
         } catch (RuntimeException e) {
@@ -133,8 +144,16 @@ public class BiddingController {
      * Annuler une enchère (seulement si pas gagnante)
      */
     @DeleteMapping("/bids/{bidId}")
-    public ResponseEntity<?> cancelBid(@PathVariable Long bidId) {
+    public ResponseEntity<?> cancelBid(
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
+            @PathVariable Long bidId) {
         try {
+            // Verify user is an investor
+            if (role != UserRole.INVESTOR) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Only investors can cancel bids");
+            }
             biddingService.cancelBid(bidId);
             return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
@@ -147,9 +166,99 @@ public class BiddingController {
      * Récupérer toutes les enchères
      */
     @GetMapping("/bids")
-    public ResponseEntity<List<BidDTO>> getAllBids() {
+    public ResponseEntity<List<BidDTO>> getAllBids(
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role) {
+        // Only admins can view all bids
+        if (role != UserRole.ADMIN_G && role != UserRole.ADMIN_STORE) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         List<BidDTO> bids = biddingService.getAllBids();
         return ResponseEntity.ok(bids);
+    }
+    
+    /**
+     * GET /api/bidding/my-bids
+     * Récupérer toutes les enchères de l'investisseur connecté
+     */
+    @GetMapping("/my-bids")
+    public ResponseEntity<?> getMyBids(
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role) {
+        try {
+            // Only investors can use this endpoint
+            if (role != UserRole.INVESTOR) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("This endpoint is only for investors");
+            }
+            List<BidDTO> bids = biddingService.getBidsByUserId(userId);
+            return ResponseEntity.ok(bids);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    
+    /**
+     * GET /api/bidding/my-current-winning-bids
+     * Récupérer les enchères actuellement gagnantes de l'investisseur connecté (en cours)
+     */
+    @GetMapping("/my-current-winning-bids")
+    public ResponseEntity<?> getMyCurrentWinningBids(
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role) {
+        try {
+            // Only investors can use this endpoint
+            if (role != UserRole.INVESTOR) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("This endpoint is only for investors");
+            }
+            List<BidDTO> bids = biddingService.getCurrentlyWinningBidsByInvestor(userId);
+            return ResponseEntity.ok(bids);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    
+    /**
+     * GET /api/bidding/my-winning-bids
+     * Récupérer les enchères finalement gagnées de l'investisseur connecté (sections fermées)
+     */
+    @GetMapping("/my-winning-bids")
+    public ResponseEntity<?> getMyWinningBids(
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role) {
+        try {
+            // Only investors can use this endpoint
+            if (role != UserRole.INVESTOR) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("This endpoint is only for investors");
+            }
+            List<BidDTO> bids = biddingService.getWinningBidsByInvestor(userId);
+            return ResponseEntity.ok(bids);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    
+    /**
+     * GET /api/bidding/my-possessions
+     * Récupérer les sections actuellement possédées par l'investisseur connecté
+     */
+    @GetMapping("/my-possessions")
+    public ResponseEntity<?> getMyPossessions(
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role) {
+        try {
+            // Only investors can use this endpoint
+            if (role != UserRole.INVESTOR) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("This endpoint is only for investors");
+            }
+            List<SectionDTO> sections = biddingService.getPossessedSectionsByInvestor(userId);
+            return ResponseEntity.ok(sections);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
     
     /**
@@ -157,8 +266,16 @@ public class BiddingController {
      * Récupérer toutes les enchères d'un investisseur
      */
     @GetMapping("/investors/{investorId}/bids")
-    public ResponseEntity<List<BidDTO>> getBidsByInvestor(@PathVariable Long investorId) {
+    public ResponseEntity<?> getBidsByInvestor(
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
+            @PathVariable Long investorId) {
         try {
+            // Investors can only view their own bids, admins can view any
+            if (role == UserRole.INVESTOR && !userId.equals(investorId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Investors can only view their own bids");
+            }
             List<BidDTO> bids = biddingService.getBidsByUserId(investorId);
             return ResponseEntity.ok(bids);
         } catch (RuntimeException e) {
@@ -167,12 +284,42 @@ public class BiddingController {
     }
     
     /**
+     * GET /api/bidding/investors/{investorId}/current-winning-bids
+     * Récupérer les enchères actuellement gagnantes d'un investisseur
+     */
+    @GetMapping("/investors/{investorId}/current-winning-bids")
+    public ResponseEntity<?> getCurrentWinningBidsByInvestor(
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
+            @PathVariable Long investorId) {
+        try {
+            // Investors can only view their own bids, admins can view any
+            if (role == UserRole.INVESTOR && !userId.equals(investorId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Investors can only view their own currently winning bids");
+            }
+            List<BidDTO> bids = biddingService.getCurrentlyWinningBidsByInvestor(investorId);
+            return ResponseEntity.ok(bids);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+    
+    /**
      * GET /api/bidding/investors/{investorId}/winning-bids
-     * Récupérer les enchères gagnantes d'un investisseur
+     * Récupérer les enchères finalement gagnées d'un investisseur (sections fermées)
      */
     @GetMapping("/investors/{investorId}/winning-bids")
-    public ResponseEntity<List<BidDTO>> getWinningBidsByInvestor(@PathVariable Long investorId) {
+    public ResponseEntity<?> getWinningBidsByInvestor(
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
+            @PathVariable Long investorId) {
         try {
+            // Investors can only view their own winning bids, admins can view any
+            if (role == UserRole.INVESTOR && !userId.equals(investorId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Investors can only view their own winning bids");
+            }
             List<BidDTO> bids = biddingService.getWinningBidsByInvestor(investorId);
             return ResponseEntity.ok(bids);
         } catch (RuntimeException e) {
@@ -224,11 +371,19 @@ public class BiddingController {
     
     /**
      * POST /api/bidding/sections/{sectionId}/close
-     * Clôturer manuellement une section
+     * Clôturer manuellement une section (Admin only)
      */
     @PostMapping("/sections/{sectionId}/close")
-    public ResponseEntity<?> closeSection(@PathVariable Long sectionId) {
+    public ResponseEntity<?> closeSection(
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
+            @PathVariable Long sectionId) {
         try {
+            // Only admins can manually close sections
+            if (role != UserRole.ADMIN_G && role != UserRole.ADMIN_STORE) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Only administrators can manually close sections");
+            }
             SectionDTO section = biddingService.closeSection(sectionId);
             return ResponseEntity.ok(section);
         } catch (RuntimeException e) {
@@ -236,15 +391,15 @@ public class BiddingController {
         }
     }
 
-    // ==================== INFORMATIONS SAISON ====================
+    // ==================== INFORMATIONS PÉRIODE MENSUELLE ====================
     
     /**
      * GET /api/bidding/season/current
-     * Obtenir les informations de la saison actuelle
+     * Obtenir les informations de la période mensuelle actuelle
      */
     @GetMapping("/season/current")
     public ResponseEntity<SeasonConfigDTO> getCurrentSeasonInfo() {
-        SeasonConfigDTO seasonInfo = biddingService.getCurrentSeasonInfo();
-        return ResponseEntity.ok(seasonInfo);
+        SeasonConfigDTO periodInfo = biddingService.getCurrentSeasonInfo();
+        return ResponseEntity.ok(periodInfo);
     }
 }

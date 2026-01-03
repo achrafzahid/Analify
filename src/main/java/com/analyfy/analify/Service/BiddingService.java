@@ -214,7 +214,20 @@ public void cancelBid(Long bidId) {
     }
     
     /**
-     * Récupérer les enchères gagnantes d'un investisseur
+     * Récupérer les enchères actuellement gagnantes d'un investisseur (en cours)
+     */
+    public List<BidDTO> getCurrentlyWinningBidsByInvestor(Long investorId) {
+        investorRepository.findById(investorId)
+            .orElseThrow(() -> new RuntimeException("Investisseur non trouvé avec l'ID: " + investorId));
+        
+        List<Bid> bids = bidRepository.findByInvestorUserIdAndStatus(investorId, "PENDING");
+        return bids.stream()
+            .map(bidMapper::toDto)
+            .collect(Collectors.toList());
+    }
+    
+    /**
+     * Récupérer les enchères finalement gagnées d'un investisseur (sections fermées)
      */
     public List<BidDTO> getWinningBidsByInvestor(Long investorId) {
         investorRepository.findById(investorId)
@@ -223,6 +236,19 @@ public void cancelBid(Long bidId) {
         List<Bid> bids = bidRepository.findByInvestorUserIdAndStatus(investorId, "WINNER");
         return bids.stream()
             .map(bidMapper::toDto)
+            .collect(Collectors.toList());
+    }
+    
+    /**
+     * Récupérer les sections actuellement possédées par un investisseur
+     */
+    public List<SectionDTO> getPossessedSectionsByInvestor(Long investorId) {
+        Investor investor = investorRepository.findById(investorId)
+            .orElseThrow(() -> new RuntimeException("Investisseur non trouvé avec l'ID: " + investorId));
+        
+        List<Section> sections = sectionRepository.findByWinnerInvestor(investor);
+        return sections.stream()
+            .map(sectionMapper::toDto)
             .collect(Collectors.toList());
     }
     
@@ -294,15 +320,15 @@ public void cancelBid(Long bidId) {
         sectionRepository.save(section);
     }
 
-    // ==================== GESTION DES SAISONS ====================
+    // ==================== GESTION DES PÉRIODES MENSUELLES ====================
 
     /**
-     * Augmenter les prix de 2% pour la nouvelle saison
-     * Exécuté tous les 2 mois (1er jour des mois impairs)
+     * Augmenter les prix de 2% pour la nouvelle période mensuelle
+     * Exécuté le 1er de chaque mois à minuit
      */
-    @Scheduled(cron = "0 0 0 1 1,3,5,7,9,11 *")
+    @Scheduled(cron = "0 0 0 1 * *")
     @Transactional
-    public void increasePricesForNewSeason() {
+    public void increasePricesForNewMonth() {
         List<Section> allSections = sectionRepository.findAll();
         
         for (Section section : allSections) {
@@ -316,9 +342,9 @@ public void cancelBid(Long bidId) {
             // Réinitialiser le statut
             section.setStatus("OPEN");
             
-            // Définir la nouvelle date limite
-            LocalDate nextSeasonStart = calculateNextSeasonStart();
-            section.setDateDelai(nextSeasonStart.minusDays(2));
+            // Définir la nouvelle date limite (dernier jour du mois actuel)
+            LocalDate nextMonthStart = calculateNextMonthStart();
+            section.setDateDelai(nextMonthStart.minusDays(1)); // Fin du mois actuel
             
             // Effacer le gagnant précédent
             section.setWinnerInvestor(null);
@@ -328,56 +354,46 @@ public void cancelBid(Long bidId) {
     }
 
     /**
-     * Calculer la date de début de la prochaine saison
+     * Calculer la date de début du mois suivant
      */
-    private LocalDate calculateNextSeasonStart() {
+    private LocalDate calculateNextMonthStart() {
         LocalDate today = LocalDate.now();
-        int currentMonth = today.getMonthValue();
-        
-        int nextSeasonStartMonth;
-        if (currentMonth <= 3) nextSeasonStartMonth = 4;
-        else if (currentMonth <= 6) nextSeasonStartMonth = 7;
-        else if (currentMonth <= 9) nextSeasonStartMonth = 10;
-        else nextSeasonStartMonth = 1;
-        
-        int year = (nextSeasonStartMonth == 1) ? today.getYear() + 1 : today.getYear();
-        
-        return LocalDate.of(year, nextSeasonStartMonth, 1);
+        return today.plusMonths(1).withDayOfMonth(1);
     }
 
     /**
-     * Obtenir les informations de la saison actuelle
+     * Obtenir les informations de la période mensuelle actuelle
      */
     public SeasonConfigDTO getCurrentSeasonInfo() {
         LocalDate today = LocalDate.now();
         int currentMonth = today.getMonthValue();
+        int currentYear = today.getYear();
         
-        // Déterminer la saison actuelle (1-4)
-        int currentSeason = (currentMonth - 1) / 3 + 1;
+        // Période actuelle = mois actuel
+        int currentPeriod = currentMonth; // 1-12
         
-        // Dates de début et fin de la saison
-        int seasonStartMonth = (currentSeason - 1) * 3 + 1;
-        LocalDate seasonStartDate = LocalDate.of(today.getYear(), seasonStartMonth, 1);
-        LocalDate seasonEndDate = seasonStartDate.plusMonths(3).minusDays(1);
+        // Dates de début et fin de la période mensuelle
+        LocalDate periodStartDate = LocalDate.of(currentYear, currentMonth, 1);
+        LocalDate periodEndDate = periodStartDate.plusMonths(1).minusDays(1); // Dernier jour du mois
         
-        // Date d'ouverture des enchères
-        LocalDate biddingOpenDate = seasonStartDate.plusMonths(2);
+        // Date d'ouverture des enchères (début du mois)
+        LocalDate biddingOpenDate = periodStartDate;
         
-        // Date de clôture des enchères
-        LocalDate biddingCloseDate = seasonEndDate.minusDays(1);
+        // Date de clôture des enchères (dernier jour du mois)
+        LocalDate biddingCloseDate = periodEndDate;
         
         // Vérifier si les enchères sont ouvertes
         boolean isBiddingOpen = !today.isBefore(biddingOpenDate) && !today.isAfter(biddingCloseDate);
         
-        // Jours restants
+        // Jours restants jusqu'à la clôture
         int daysUntilClose = isBiddingOpen ? 
             (int) java.time.temporal.ChronoUnit.DAYS.between(today, biddingCloseDate) : 0;
         
         return new SeasonConfigDTO(
             currentMonth,
-            currentSeason,
-            seasonStartDate,
-            seasonEndDate,
+            currentPeriod,
+            periodStartDate,
+            periodEndDate,
             biddingOpenDate,
             biddingCloseDate,
             isBiddingOpen,

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import com.analyfy.analify.Entity.Section;
+import com.analyfy.analify.Entity.Investor;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,6 +29,9 @@ public interface SectionRepository extends JpaRepository<Section, Long> {
     
     // Trouver les sections par investisseur gagnant
     List<Section> findByWinnerInvestorUserId(Long investorId);
+    
+    // Trouver les sections par investisseur gagnant (entity)
+    List<Section> findByWinnerInvestor(Investor investor);
     
     // Compter les sections par statut
     Long countByStatus(String status);

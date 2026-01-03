@@ -10,9 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class SeasonConfigDTO {
     private Integer currentMonth;
-    private Integer currentSeason; // 1, 2, 3, 4
-    private LocalDate seasonStartDate;
-    private LocalDate seasonEndDate;
+    private Integer currentPeriod; // 1-12 (mois de l'année)
+    private LocalDate periodStartDate;
+    private LocalDate periodEndDate;
     private LocalDate biddingOpenDate;
     private LocalDate biddingCloseDate;
     private Boolean isBiddingOpen;
