@@ -36,8 +36,11 @@ const Products: React.FC = () => {
   const queryClient = useQueryClient();
   
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isStockDialogOpen, setIsStockDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<Partial<Product>>({});
+  const [stockQuantity, setStockQuantity] = useState<number>(0);
+  const [suggestedStock, setSuggestedStock] = useState<number>(0);
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [searchField, setSearchField] = useState('');
@@ -182,7 +185,7 @@ const Products: React.FC = () => {
     setIsEditOpen(true);
   };
 
-  const handleFillStock = (product: Product) => {
+  const handleFillStock = async (product: Product) => {
     if (!user?.storeId) {
       toast({
         title: 'Error',
@@ -192,11 +195,38 @@ const Products: React.FC = () => {
       return;
     }
     
+    setSelectedProduct(product);
+    setIsStockDialogOpen(true);
+    
+    // Fetch suggested stock quantity
+    try {
+      const suggested = await productsApi.getSuggestedStock(product.productId, user.storeId);
+      setSuggestedStock(suggested);
+      setStockQuantity(suggested);
+    } catch (error) {
+      toast({
+        title: 'Warning',
+        description: 'Could not fetch suggested stock. Using default value.',
+        variant: 'default',
+      });
+      setSuggestedStock(50);
+      setStockQuantity(50);
+    }
+  };
+
+  const handleConfirmStockRefill = () => {
+    if (!user?.storeId || !selectedProduct) return;
+    
     updateStockMutation.mutate({
-      productId: product.productId,
+      productId: selectedProduct.productId,
       data: {
         storeId: user.storeId,
-        quantity: MAX_STOCK,
+        quantity: stockQuantity,
+      },
+    }, {
+      onSuccess: () => {
+        setIsStockDialogOpen(false);
+        setSelectedProduct(null);
       },
     });
   };
@@ -254,7 +284,8 @@ const Products: React.FC = () => {
             variant="ghost"
             size="icon"
             onClick={() => handleFillStock(product)}
-            disabled={product.quantity === MAX_STOCK || updateStockMutation.isPending}
+            disabled={updateStockMutation.isPending}
+            title="Refill Stock"
           >
             <RefreshCw className={`h-4 w-4 ${updateStockMutation.isPending ? 'animate-spin' : ''}`} />
           </Button>
@@ -374,6 +405,88 @@ const Products: React.FC = () => {
                 </>
               ) : (
                 'Save Changes'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stock Refill Dialog */}
+      <Dialog open={isStockDialogOpen} onOpenChange={setIsStockDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5" />
+              Refill Stock
+            </DialogTitle>
+            <DialogDescription>
+              Add stock for {selectedProduct?.productName}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Current Stock</Label>
+              <Input 
+                value={selectedProduct?.quantity || 0} 
+                disabled 
+                className="bg-muted" 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Quantity to Add</Label>
+              <Input
+                type="number"
+                min="1"
+                value={stockQuantity}
+                onChange={(e) => setStockQuantity(parseInt(e.target.value) || 0)}
+                placeholder="Enter quantity"
+              />
+              <p className="text-sm text-muted-foreground">
+                Suggested: {suggestedStock} units
+                {suggestedStock !== stockQuantity && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="ml-2 h-auto p-0"
+                    onClick={() => setStockQuantity(suggestedStock)}
+                  >
+                    Use suggested
+                  </Button>
+                )}
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-muted p-3">
+              <p className="text-sm font-medium">New Total Stock</p>
+              <p className="text-2xl font-bold">
+                {(selectedProduct?.quantity || 0) + stockQuantity} units
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsStockDialogOpen(false);
+                setSelectedProduct(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConfirmStockRefill} 
+              disabled={updateStockMutation.isPending || stockQuantity <= 0}
+            >
+              {updateStockMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Confirm Refill'
               )}
             </Button>
           </DialogFooter>

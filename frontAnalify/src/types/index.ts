@@ -61,6 +61,7 @@ export interface Product {
 
 // Low Stock Item (matches LowStockAlertDTO from backend)
 export interface LowStockItem {
+  productId: number;
   storeId: number;
   storeCity: string;
   productName: string;

@@ -1,14 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AlertTriangle, Package, Store, RefreshCw, Loader2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { DataTable } from '@/components/shared/DataTable';
 import { FilterPanel } from '@/components/shared/FilterPanel';
 import { StatCard } from '@/components/shared/StatCard';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { LowStockItem, FilterConfig, SearchConfig } from '@/types';
-import { productsApi } from '@/services/api';
+import { productsApi, UpdateStockRequest } from '@/services/api';
 
 const searchConfig: SearchConfig = {
   searchableFields: [
@@ -20,13 +37,20 @@ const searchConfig: SearchConfig = {
 const LowStock: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [searchField, setSearchField] = useState('');
+  const [isStockDialogOpen, setIsStockDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<LowStockItem | null>(null);
+  const [stockQuantity, setStockQuantity] = useState<number>(0);
+  const [suggestedStock, setSuggestedStock] = useState<number>(0);
+  const [selectedStoreId, setSelectedStoreId] = useState<number | undefined>(undefined);
 
   const isInvestor = user?.role === 'INVESTOR';
   const isGeneralAdmin = user?.role === 'ADMIN_GENERAL' || user?.role === 'ADMIN_G';
-  const hasAccess = isInvestor || isGeneralAdmin;
+  const isStoreAdmin = user?.role === 'ADMIN_STORE';
+  const hasAccess = isInvestor || isGeneralAdmin || isStoreAdmin;
 
   // Check access
   if (!hasAccess) {
@@ -39,9 +63,9 @@ const LowStock: React.FC = () => {
 
   // Fetch all low stock alerts from API
   const { data: allItems = [], isLoading, error } = useQuery({
-    queryKey: ['lowStockAlerts'],
+    queryKey: ['lowStockAlerts', selectedStoreId],
     queryFn: async () => {
-      const data = await productsApi.getLowStockAlerts();
+      const data = await productsApi.getLowStockAlerts(selectedStoreId);
       return data as LowStockItem[];
     },
   });
@@ -68,6 +92,15 @@ const LowStock: React.FC = () => {
   const warningItems = items.filter(item => item.quantity > 5 && item.quantity <= 10);
   const uniqueStores = new Set(items.map(item => item.storeId)).size;
 
+  // Extract unique stores for ADMIN_G selector
+  const availableStores = useMemo(() => {
+    const storeMap = new Map<number, string>();
+    allItems.forEach(item => {
+      storeMap.set(item.storeId, item.storeCity);
+    });
+    return Array.from(storeMap.entries()).map(([id, city]) => ({ id, city }));
+  }, [allItems]);
+
   // Extract unique cities for filter options
   const uniqueCities = Array.from(new Set(allItems.map(item => item.storeCity)))
     .map(city => ({ value: city, label: city }));
@@ -83,10 +116,57 @@ const LowStock: React.FC = () => {
     { field: 'quantity', label: 'Quantity Range', type: 'number-range' },
   ];
 
-  const handleRequestRestock = (item: LowStockItem) => {
-    toast({
-      title: 'Restock Requested',
-      description: `Restock request sent for "${item.productName}" at ${item.storeCity}.`,
+  // Update stock mutation
+  const updateStockMutation = useMutation({
+    mutationFn: ({ productId, data }: { productId: number; data: UpdateStockRequest }) =>
+      productsApi.updateStock(productId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lowStockAlerts'] });
+      toast({
+        title: 'Stock Updated',
+        description: 'Product stock has been successfully refilled.',
+      });
+      setIsStockDialogOpen(false);
+      setSelectedItem(null);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update stock',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleRequestRestock = async (item: LowStockItem) => {
+    setSelectedItem(item);
+    setIsStockDialogOpen(true);
+    
+    // Fetch suggested stock quantity
+    try {
+      const suggested = await productsApi.getSuggestedStock(item.productId, item.storeId);
+      setSuggestedStock(suggested);
+      setStockQuantity(suggested);
+    } catch (error) {
+      toast({
+        title: 'Warning',
+        description: 'Could not fetch suggested stock. Using default value.',
+        variant: 'default',
+      });
+      setSuggestedStock(50);
+      setStockQuantity(50);
+    }
+  };
+
+  const handleConfirmStockRefill = () => {
+    if (!selectedItem) return;
+    
+    updateStockMutation.mutate({
+      productId: selectedItem.productId,
+      data: {
+        storeId: selectedItem.storeId,
+        quantity: stockQuantity,
+      },
     });
   };
 
@@ -170,6 +250,33 @@ const LowStock: React.FC = () => {
         </Button>
       </div>
 
+      {/* Store Selector for ADMIN_G */}
+      {isGeneralAdmin && (
+        <div className="mb-6 bg-muted/50 rounded-lg p-4">
+          <div className="flex items-center gap-4">
+            <Label htmlFor="store-select" className="whitespace-nowrap">
+              Filter by Store:
+            </Label>
+            <Select
+              value={selectedStoreId?.toString() || 'all'}
+              onValueChange={(value) => setSelectedStoreId(value === 'all' ? undefined : Number(value))}
+            >
+              <SelectTrigger id="store-select" className="w-[300px]">
+                <SelectValue placeholder="All Stores" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stores</SelectItem>
+                {availableStores.map((store) => (
+                  <SelectItem key={store.id} value={store.id.toString()}>
+                    Store {store.id} - {store.city}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -223,6 +330,98 @@ const LowStock: React.FC = () => {
           <DataTable columns={columns} data={items} defaultPageSize={10} />
         </>
       )}
+
+      {/* Stock Refill Dialog */}
+      <Dialog open={isStockDialogOpen} onOpenChange={setIsStockDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5" />
+              Refill Stock
+            </DialogTitle>
+            <DialogDescription>
+              Add stock for {selectedItem?.productName} at {selectedItem?.storeCity}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">Store</Label>
+                <Input 
+                  value={selectedItem?.storeCity || ''} 
+                  disabled 
+                  className="bg-muted" 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">Current Stock</Label>
+                <Input 
+                  value={selectedItem?.quantity || 0} 
+                  disabled 
+                  className="bg-muted" 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Quantity to Add</Label>
+              <Input
+                type="number"
+                min="1"
+                value={stockQuantity}
+                onChange={(e) => setStockQuantity(parseInt(e.target.value) || 0)}
+                placeholder="Enter quantity"
+              />
+              <p className="text-sm text-muted-foreground">
+                Suggested: {suggestedStock} units
+                {suggestedStock !== stockQuantity && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="ml-2 h-auto p-0"
+                    onClick={() => setStockQuantity(suggestedStock)}
+                  >
+                    Use suggested
+                  </Button>
+                )}
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-muted p-3">
+              <p className="text-sm font-medium">New Total Stock</p>
+              <p className="text-2xl font-bold">
+                {(selectedItem?.quantity || 0) + stockQuantity} units
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsStockDialogOpen(false);
+                setSelectedItem(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConfirmStockRefill} 
+              disabled={updateStockMutation.isPending || stockQuantity <= 0}
+            >
+              {updateStockMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Confirm Refill'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

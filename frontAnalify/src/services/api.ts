@@ -241,10 +241,12 @@ export const productsApi = {
     apiRequest(`${API_URLS.DELETE_PRODUCT}/${id}`, 'DELETE'),
   updateStock: (productId: number, data: UpdateStockRequest) =>
     apiRequest(`${API_URLS.UPDATE_STOCK}/${productId}/stock`, 'PUT', data),
+  getSuggestedStock: (productId: number, storeId: number) =>
+    apiRequest<number>(`${API_URLS.GET_PRODUCT}/${productId}/suggested-stock?storeId=${storeId}`),
   search: (query: string) =>
     apiRequest(`${API_URLS.SEARCH_PRODUCTS}?query=${encodeURIComponent(query)}`),
-  getLowStockAlerts: () =>
-    apiRequest(API_URLS.LOW_STOCK_ALERTS),
+  getLowStockAlerts: (storeId?: number) =>
+    apiRequest(`${API_URLS.LOW_STOCK_ALERTS}${storeId ? `?storeId=${storeId}` : ''}`),
 };
 
 // Employees API
