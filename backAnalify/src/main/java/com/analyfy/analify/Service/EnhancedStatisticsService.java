@@ -32,17 +32,22 @@ public class EnhancedStatisticsService {
     @Transactional(readOnly = true)
     public EnhancedDashboardDTO getEnhancedDashboard(Long userId, UserRole role, StatisticsFilterDTO filter) {
         log.info("Generating enhanced dashboard for user {} with role {}", userId, role);
-        ensureDateRange(filter);
+        ensureDateRange(filter, role);
 
         Long storeId = null;
         Long investorId = null;
 
-        // Role-based Context Setup
+        // Role-based Context Setup - STRICT ENCAPSULATION
         if (role == UserRole.ADMIN_STORE) {
-            storeId = resolveStoreId(userId, filter.getStoreId());
+            // ADMIN_STORE can ONLY see their own store - ignore filter
+            storeId = resolveStoreId(userId, null);
+            investorId = null; // Store admin doesn't filter by investor
         } else if (role == UserRole.INVESTOR) {
+            // INVESTOR can ONLY see their own products - strict enforcement
             investorId = userId;
+            storeId = null; // Investor doesn't filter by store
         } else if (role == UserRole.ADMIN_G) {
+            // ADMIN_G can see everything and apply optional filters
             storeId = filter.getStoreId();
             investorId = filter.getInvestorId();
         }
@@ -61,11 +66,15 @@ public class EnhancedStatisticsService {
         Long totalSold = totalSoldInt != null ? totalSoldInt.longValue() : 0L;
         Long lowStock = productRepository.countLowStockItems(storeId, investorId, 10);
         
-        // Section/Bidding Metrics
-        Long totalSections = sectionRepository.count();
-        Long activeSections = sectionRepository.countByStatus("OPEN");
+        // Section/Bidding Metrics - role-based filtering
+        // For ADMIN_G: all sections; for INVESTOR: only their won/bid sections; for ADMIN_STORE: none (sections not store-specific)
+        Long totalSections = (role == UserRole.ADMIN_G) ? sectionRepository.count() : 
+                            (role == UserRole.INVESTOR) ? (long) sectionRepository.findByWinnerInvestorUserId(investorId).size() : 0L;
+        Long activeSections = (role == UserRole.ADMIN_G) ? sectionRepository.countByStatus("OPEN") : 
+                             (role == UserRole.INVESTOR) ? (long) sectionRepository.findByWinnerInvestorUserId(investorId).size() : 0L;
         Double totalSectionValue = sectionRepository.calculateTotalSectionValue(investorId);
-        Long totalBids = bidRepository.count();
+        Long totalBids = (role == UserRole.ADMIN_G) ? bidRepository.count() : 
+                        (role == UserRole.INVESTOR) ? bidRepository.countTotalBids(investorId) : 0L;
         
         // Investor-specific section metrics
         Long myWonSections = (role == UserRole.INVESTOR) ? 
@@ -101,10 +110,13 @@ public class EnhancedStatisticsService {
         Map<String, Long> productCountByCategory = productRepository.countProductsByCategory(investorId)
                 .stream().collect(Collectors.toMap(r -> String.valueOf(r[0]), r -> ((Number)r[1]).longValue()));
 
-        List<CategoryAnalyticsDTO> topCategories = buildTopCategoriesAnalytics(role, investorId, filter);
+        // Category analytics - ADMIN_G sees all, ADMIN_STORE sees their store, INVESTOR sees nothing
+        List<CategoryAnalyticsDTO> topCategories = (role != UserRole.INVESTOR) ? 
+            buildTopCategoriesAnalytics(role, storeId, investorId, filter) : Collections.emptyList();
 
         // === SECTION STATS ===
-        SectionStatsDTO sectionStats = buildSectionStats(investorId, filter);
+        // Only ADMIN_G and INVESTOR see section stats (sections are not store-specific)
+        SectionStatsDTO sectionStats = (role == UserRole.ADMIN_STORE) ? null : buildSectionStats(investorId, filter, role);
 
         // === GEOGRAPHIC ===
         Map<String, Double> salesByRegion = mapToDoubleMap(
@@ -115,6 +127,7 @@ public class EnhancedStatisticsService {
         );
 
         // === LEADERBOARDS ===
+        // Top products filtered by role: ADMIN_G (all), ADMIN_STORE (their store), INVESTOR (their products)
         List<RankingItem> topProducts = mapToRanking(productRepository.findTopSellingProducts(
                 filter.getStartDate(), filter.getEndDate(), investorId, storeId, PageRequest.of(0, 10)));
         
@@ -137,6 +150,7 @@ public class EnhancedStatisticsService {
         InvestorSpecificDTO investorData = (role == UserRole.INVESTOR) ? 
             buildInvestorSpecificData(userId, filter) : null;
         
+        // ADMIN_G specific data - platform-wide statistics (no filters)
         AdminGSpecificDTO adminGData = (role == UserRole.ADMIN_G) ? 
             buildAdminGSpecificData(filter) : null;
 
@@ -186,7 +200,8 @@ public class EnhancedStatisticsService {
     }
 
     // ==================== SECTION STATS BUILDER ====================
-    private SectionStatsDTO buildSectionStats(Long investorId, StatisticsFilterDTO filter) {
+    private SectionStatsDTO buildSectionStats(Long investorId, StatisticsFilterDTO filter, UserRole role) {
+        // For INVESTOR: only their sections; for ADMIN_G: all sections
         List<Object[]> statusCounts = sectionRepository.countSectionsByStatus(investorId);
         Map<String, Long> sectionsByStatus = statusCounts.stream()
             .collect(Collectors.toMap(r -> String.valueOf(r[0]), r -> ((Number)r[1]).longValue()));
@@ -197,22 +212,35 @@ public class EnhancedStatisticsService {
         Long wonSections = investorId != null ? 
             (long) sectionRepository.findByWinnerInvestorUserId(investorId).size() : 0L;
         
-        Double totalSectionValue = sectionRepository.calculateTotalSectionValue(investorId);
-        Double averageSectionPrice = sectionRepository.calculateAverageSectionPrice(investorId);
-        Double totalBidsValue = bidRepository.calculateTotalBidsValue(investorId);
-        Double averageBidIncrease = sectionRepository.calculateAveragePriceIncrease(investorId);
-        Double expectedRevenue = sectionRepository.calculateExpectedRevenue(investorId);
-        Double actualRevenue = sectionRepository.calculateActualRevenue(investorId);
+        // Total value of all sections (base price + increments)
+        Double totalSectionValue = safeDouble(sectionRepository.calculateTotalSectionValue(investorId));
         
-        Long totalBids = bidRepository.count();
+        // Average price per section
+        Double averageSectionPrice = safeDouble(sectionRepository.calculateAverageSectionPrice(investorId));
+        
+        // Total value of all bids placed
+        Double totalBidsValue = safeDouble(bidRepository.calculateTotalBidsValue(investorId));
+        
+        // Average price increase from bidding
+        Double averageBidIncrease = safeDouble(sectionRepository.calculateAveragePriceIncrease(investorId));
+        
+        // Expected revenue from winning sections (if they close)
+        Double expectedRevenue = safeDouble(sectionRepository.calculateExpectedRevenue(investorId));
+        
+        // Actual revenue from closed/won sections
+        Double actualRevenue = safeDouble(sectionRepository.calculateActualRevenue(investorId));
+        
+        Long totalBids = (role == UserRole.ADMIN_G) ? bidRepository.count() : 
+                        (investorId != null ? bidRepository.countTotalBids(investorId) : 0L);
         Long investorBids = investorId != null ? bidRepository.countTotalBids(investorId) : totalBids;
         Double averageBidsPerSection = totalSections > 0 ? (double) investorBids / totalSections : 0.0;
         Double bidWinRate = investorId != null ? bidRepository.calculateWinRate(investorId) : 0.0;
         
-        List<RankingItem> mostActiveInvestors = mapToRanking(
-            bidRepository.findMostActiveInvestors().stream().limit(10).toList());
-        List<RankingItem> topBidders = mapToRanking(
-            bidRepository.findTopBiddersByAmount().stream().limit(10).toList());
+        // Leaderboards - only ADMIN_G sees all investors/bidders
+        List<RankingItem> mostActiveInvestors = (role == UserRole.ADMIN_G) ? mapToRanking(
+            bidRepository.findMostActiveInvestors().stream().limit(10).toList()) : Collections.emptyList();
+        List<RankingItem> topBidders = (role == UserRole.ADMIN_G) ? mapToRanking(
+            bidRepository.findTopBiddersByAmount().stream().limit(10).toList()) : Collections.emptyList();
         
         List<RankingItem> mostCompetitive = mapToRanking(
             sectionRepository.findMostCompetitiveSections(investorId).stream().limit(10).toList());
@@ -232,9 +260,9 @@ public class EnhancedStatisticsService {
         Map<String, Long> sectionsOpenedByMonth = mapToLongMap(
             sectionRepository.countSectionsOpenedByMonth(investorId));
         
-        // Predictions
-        Double predictedRevenue = expectedRevenue != null ? expectedRevenue * 1.15 : 0.0;
-        Double predictedBidActivity = (double) totalBids * 1.1;
+        // Predictions - ensure positive values
+        Double predictedRevenue = Math.max(0.0, expectedRevenue * 1.15);
+        Double predictedBidActivity = Math.max(0.0, (double) totalBids * 1.1);
         String marketTrend = determineMarketTrend(activeSections, totalBids);
         
         return SectionStatsDTO.builder()
@@ -242,12 +270,12 @@ public class EnhancedStatisticsService {
                 .activeSections(activeSections)
                 .closedSections(closedSections)
                 .wonSections(wonSections)
-                .totalSectionValue(safeDouble(totalSectionValue))
-                .averageSectionPrice(safeDouble(averageSectionPrice))
-                .totalBidsValue(safeDouble(totalBidsValue))
-                .averageBidIncrease(safeDouble(averageBidIncrease))
-                .expectedRevenue(safeDouble(expectedRevenue))
-                .actualRevenue(safeDouble(actualRevenue))
+                .totalSectionValue(Math.max(0.0, totalSectionValue))
+                .averageSectionPrice(Math.max(0.0, averageSectionPrice))
+                .totalBidsValue(Math.max(0.0, totalBidsValue))
+                .averageBidIncrease(Math.max(0.0, averageBidIncrease))
+                .expectedRevenue(Math.max(0.0, expectedRevenue))
+                .actualRevenue(Math.max(0.0, actualRevenue))
                 .totalBids(totalBids)
                 .averageBidsPerSection(averageBidsPerSection)
                 .bidWinRate(safeDouble(bidWinRate))
@@ -271,22 +299,47 @@ public class EnhancedStatisticsService {
     // ==================== FINANCIAL SUMMARY ====================
     private FinancialSummaryDTO buildFinancialSummary(Double productRevenue, Double sectionRevenue, 
                                                        Double stockValue, Long investorId) {
+        // Revenue from selling products
         Double prodRev = safeDouble(productRevenue);
+        
+        // Section revenue = money earned from sections that were won (this is actual income)
         Double sectRev = safeDouble(sectionRevenue);
+        
+        // Total revenue from both sources
         Double totalRev = prodRev + sectRev;
         
-        Double stockCost = safeDouble(stockValue) * 0.7; // Assume 70% cost
+        // Cost of goods sold - only for products actually sold, not total inventory
+        // We estimate COGS as 60% of product revenue (40% margin)
+        Double productCOGS = prodRev * 0.60;
+        
+        // Section investments - money paid to win sections (this is the cost/investment)
+        // Note: sectionRevenue here is confusing - it's actually the amount paid for sections
+        // For investors: this is the bid amount they paid to win sections
         Double sectionInvestments = safeDouble(sectRev);
-        Double operationalCosts = totalRev * 0.15; // Estimate 15% operational costs
         
-        Double grossProfit = totalRev - stockCost - operationalCosts;
+        // Operational costs (salaries, rent, utilities, etc.) - 15% of revenue
+        Double operationalCosts = totalRev * 0.15;
+        
+        // Gross profit = Revenue - COGS - Operational Costs
+        // Note: Section revenue is already net (payment received), so we don't subtract it again
+        Double grossProfit = prodRev - productCOGS - operationalCosts + sectRev;
+        
+        // Profit margin as percentage of total revenue
         Double profitMargin = totalRev > 0 ? (grossProfit / totalRev) * 100 : 0.0;
-        Double roi = (stockCost + sectionInvestments) > 0 ? 
-            (grossProfit / (stockCost + sectionInvestments)) * 100 : 0.0;
         
+        // ROI = (Profit / Total Investment) * 100
+        // Total investment = COGS + Section bids paid + Operational costs
+        Double totalInvestment = productCOGS + sectionInvestments + operationalCosts;
+        Double roi = totalInvestment > 0 ? (grossProfit / totalInvestment) * 100 : 0.0;
+        
+        // Expected income from pending/open sections
         Double expectedIncome = sectionRepository.calculateExpectedRevenue(investorId);
-        Double pendingPayments = totalRev * 0.05; // Estimate 5% pending
-        Double availableCash = grossProfit - pendingPayments;
+        
+        // Pending payments (5% of revenue not yet collected)
+        Double pendingPayments = totalRev * 0.05;
+        
+        // Available cash = gross profit - pending payments
+        Double availableCash = Math.max(0.0, grossProfit - pendingPayments);
         
         Double revenueGrowthRate = 12.5; // Would need historical comparison
         String financialHealth = determineFinancialHealth(profitMargin, roi);
@@ -295,25 +348,26 @@ public class EnhancedStatisticsService {
                 .productSalesRevenue(prodRev)
                 .sectionSalesRevenue(sectRev)
                 .totalRevenue(totalRev)
-                .totalStockCost(stockCost)
+                .totalStockCost(productCOGS)  // Cost of goods sold, not total inventory value
                 .totalSectionInvestments(sectionInvestments)
                 .operationalCosts(operationalCosts)
-                .grossProfit(grossProfit)
+                .grossProfit(Math.max(0.0, grossProfit))  // Ensure non-negative
                 .profitMargin(round(profitMargin))
                 .roi(round(roi))
                 .expectedIncome(safeDouble(expectedIncome))
                 .pendingPayments(pendingPayments)
-                .availableCash(availableCash)
+                .availableCash(Math.max(0.0, availableCash))  // Ensure non-negative
                 .revenueGrowthRate(revenueGrowthRate)
                 .financialHealth(financialHealth)
                 .build();
     }
 
     // ==================== CATEGORY ANALYTICS ====================
-    private List<CategoryAnalyticsDTO> buildTopCategoriesAnalytics(UserRole role, Long investorId, StatisticsFilterDTO filter) {
+    private List<CategoryAnalyticsDTO> buildTopCategoriesAnalytics(UserRole role, Long storeId, Long investorId, StatisticsFilterDTO filter) {
         if (role != UserRole.ADMIN_G && role != UserRole.ADMIN_STORE) {
             return Collections.emptyList();
         }
+        // Note: storeId filters data for ADMIN_STORE, null for ADMIN_G (sees all)
         
         List<CategoryAnalyticsDTO> result = new ArrayList<>();
         List<Object[]> categories = categoryRepository.findAll().stream()
@@ -479,14 +533,27 @@ public class EnhancedStatisticsService {
 
     // ==================== INVESTOR-SPECIFIC DATA ====================
     private InvestorSpecificDTO buildInvestorSpecificData(Long investorId, StatisticsFilterDTO filter) {
+        // Count of products owned by this investor
         Long productsOwned = productRepository.countByInvestorUserId(investorId);
-        Double portfolioValue = productRepository.calculateTotalStockValue(null, investorId);
-        Long sectionsWon = (long) sectionRepository.findByWinnerInvestorUserId(investorId).size();
-        Double sectionInvestment = sectionRepository.calculateActualRevenue(investorId);
         
-        Double productRevenue = orderRepository.calculateTotalRevenue(filter.getStartDate(), filter.getEndDate(), null, investorId);
+        // Total value of all product inventory owned
+        Double portfolioValue = safeDouble(productRepository.calculateTotalStockValue(null, investorId));
+        
+        // Number of sections won by this investor
+        Long sectionsWon = (long) sectionRepository.findByWinnerInvestorUserId(investorId).size();
+        
+        // Total amount invested in sections (money paid for winning bids)
+        Double sectionInvestment = safeDouble(sectionRepository.calculateActualRevenue(investorId));
+        
+        // Revenue from selling products
+        Double productRevenue = safeDouble(orderRepository.calculateTotalRevenue(filter.getStartDate(), filter.getEndDate(), null, investorId));
+        
+        // Revenue from sections = value received from sections (could be rental income, usage fees, etc.)
+        // For now, we'll use section investment as the section value
         Double sectionRevenue = sectionInvestment;
-        Double portfolioGrowth = 18.5; // Would need historical data
+        
+        // Portfolio growth rate (would need historical comparison)
+        Double portfolioGrowth = 18.5;
         
         Long activeBids = (long) bidRepository.findByInvestorUserIdAndStatus(investorId, "PENDING").size();
         Double totalBidAmount = bidRepository.calculateTotalBidsValue(investorId);
@@ -500,16 +567,16 @@ public class EnhancedStatisticsService {
         Long lowStockAlerts = productRepository.countLowStockItems(null, investorId, 10);
         
         return InvestorSpecificDTO.builder()
-                .totalProductsOwned(productsOwned)
-                .portfolioValue(safeDouble(portfolioValue))
-                .totalSectionsWon(sectionsWon)
-                .totalInvestmentInSections(safeDouble(sectionInvestment))
-                .totalRevenuefromProducts(safeDouble(productRevenue))
-                .totalRevenueFromSections(safeDouble(sectionRevenue))
+                .totalProductsOwned(productsOwned != null ? productsOwned : 0L)
+                .portfolioValue(Math.max(0.0, portfolioValue))
+                .totalSectionsWon(sectionsWon != null ? sectionsWon : 0L)
+                .totalInvestmentInSections(Math.max(0.0, sectionInvestment))
+                .totalRevenuefromProducts(Math.max(0.0, productRevenue))
+                .totalRevenueFromSections(Math.max(0.0, sectionRevenue))
                 .portfolioGrowth(portfolioGrowth)
                 .performanceRating("ABOVE_AVERAGE")
-                .activeBids(activeBids)
-                .totalBidAmount(safeDouble(totalBidAmount))
+                .activeBids(activeBids != null ? activeBids : 0L)
+                .totalBidAmount(Math.max(0.0, totalBidAmount))
                 .myTopBiddingSections(topBiddingSections)
                 .bestSellingProducts(bestSelling)
                 .worstSellingProducts(worstSelling)
@@ -548,7 +615,8 @@ public class EnhancedStatisticsService {
         List<RankingItem> topStores = mapToRanking(
             productRepository.findTopStores(filter.getStartDate(), filter.getEndDate(), PageRequest.of(0, 10)));
         
-        List<CategoryAnalyticsDTO> allCategories = buildTopCategoriesAnalytics(UserRole.ADMIN_G, null, filter);
+        // ADMIN_G sees all categories (no store/investor filter)
+        List<CategoryAnalyticsDTO> allCategories = buildTopCategoriesAnalytics(UserRole.ADMIN_G, null, null, filter);
         
         Map<String, Double> categoryMarketShare = allCategories.stream()
             .collect(Collectors.toMap(
@@ -560,16 +628,16 @@ public class EnhancedStatisticsService {
         Long criticalLowStock = productRepository.countLowStockItems(null, null, 5);
         
         return AdminGSpecificDTO.builder()
-                .totalUsers(totalUsers)
-                .totalInvestors(totalInvestors)
-                .totalStores(totalStores)
-                .totalEmployees(totalEmployees)
-                .platformRevenue(safeDouble(platformRevenue))
+                .totalUsers(totalUsers != null ? totalUsers : 0L)
+                .totalInvestors(totalInvestors != null ? totalInvestors : 0L)
+                .totalStores(totalStores != null ? totalStores : 0L)
+                .totalEmployees(totalEmployees != null ? totalEmployees : 0L)
+                .platformRevenue(Math.max(0.0, safeDouble(platformRevenue)))
                 .platformGrowthRate(platformGrowth)
-                .totalTransactions(totalTransactions)
-                .totalSectionsCreated(totalSectionsCreated)
-                .totalSectionRevenue(safeDouble(totalSectionRevenue))
-                .averageSectionCompetition(round(avgCompetition))
+                .totalTransactions(totalTransactions != null ? totalTransactions : 0L)
+                .totalSectionsCreated(totalSectionsCreated != null ? totalSectionsCreated : 0L)
+                .totalSectionRevenue(Math.max(0.0, safeDouble(totalSectionRevenue)))
+                .averageSectionCompetition(Math.max(0.0, round(avgCompetition)))
                 .activeUsersByRole(activeUsersByRole)
                 .mostActiveInvestors(mostActiveInvestors)
                 .topPerformingStores(topStores)
@@ -645,13 +713,31 @@ public class EnhancedStatisticsService {
         return Math.max(20, 50 - currentStock);
     }
 
-    private void ensureDateRange(StatisticsFilterDTO filter) {
-        if (filter.getStartDate() == null) filter.setStartDate(LocalDate.now().minusMonths(1));
-        if (filter.getEndDate() == null) filter.setEndDate(LocalDate.now());
+    private void ensureDateRange(StatisticsFilterDTO filter, UserRole role) {
+        // For ADMIN_G: if no dates specified, show ALL TIME (not just 1 month)
+        // For other roles: default to last 1 month for performance
+        if (filter.getStartDate() == null) {
+            if (role == UserRole.ADMIN_G) {
+                // ADMIN_G sees all-time by default (use a very old date to capture everything)
+                filter.setStartDate(LocalDate.of(2000, 1, 1));
+            } else {
+                // Other roles: last month for better performance
+                filter.setStartDate(LocalDate.now().minusMonths(1));
+            }
+        }
+        if (filter.getEndDate() == null) {
+            filter.setEndDate(LocalDate.now());
+        }
     }
 
-    private Long resolveStoreId(Long adminId, Long requestedStoreId) {
-        return requestedStoreId;
+    private Long resolveStoreId(Long adminStoreUserId, Long requestedStoreId) {
+        // ADMIN_STORE can ONLY see their own store - security enforcement
+        // Fetch the AdminStore entity to get their actual store
+        return userRepository.findById(adminStoreUserId)
+            .filter(user -> user instanceof com.analyfy.analify.Entity.AdminStore)
+            .map(user -> ((com.analyfy.analify.Entity.AdminStore) user).getStore())
+            .map(store -> store.getStoreId())
+            .orElse(requestedStoreId); // Fallback if not found (shouldn't happen)
     }
 
     private Map<String, Double> mapToDoubleMap(List<Object[]> rows) {

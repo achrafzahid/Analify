@@ -29,7 +29,7 @@ public class StatisticsService {
     @Transactional(readOnly = true)
     public DashboardStatsDTO getDashboard(Long userId, UserRole role, StatisticsFilterDTO filter) {
         log.info("Generating dashboard for user {} with role {}", userId, role);
-        ensureDateRange(filter);
+        ensureDateRange(filter, role);
 
         Long storeId = null;
         Long investorId = null;
@@ -150,9 +150,21 @@ public class StatisticsService {
         return stats;
     }
 
-    private void ensureDateRange(StatisticsFilterDTO filter) {
-        if (filter.getStartDate() == null) filter.setStartDate(LocalDate.now().minusMonths(1));
-        if (filter.getEndDate() == null) filter.setEndDate(LocalDate.now());
+    private void ensureDateRange(StatisticsFilterDTO filter, UserRole role) {
+        // For ADMIN_G: if no dates specified, show ALL TIME (not just 1 month)
+        // For other roles: default to last 1 month for performance
+        if (filter.getStartDate() == null) {
+            if (role == UserRole.ADMIN_G) {
+                // ADMIN_G sees all-time by default (use a very old date to capture everything)
+                filter.setStartDate(LocalDate.of(2000, 1, 1));
+            } else {
+                // Other roles: last month for better performance
+                filter.setStartDate(LocalDate.now().minusMonths(1));
+            }
+        }
+        if (filter.getEndDate() == null) {
+            filter.setEndDate(LocalDate.now());
+        }
     }
 
     private Long resolveStoreId(Long adminId, Long requestedStoreId) {
@@ -185,7 +197,7 @@ public class StatisticsService {
 
     // Prediction Logic (Updated to use Universal Query)
     public PredictionResultDTO getPredictions(Long userId, UserRole role, String metric, StatisticsFilterDTO filter) {
-        ensureDateRange(filter);
+        ensureDateRange(filter, role);
         Long storeId = (role == UserRole.ADMIN_STORE) ? resolveStoreId(userId, filter.getStoreId()) : filter.getStoreId();
         Long investorId = (role == UserRole.INVESTOR) ? userId : filter.getInvestorId();
         

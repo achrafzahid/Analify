@@ -86,8 +86,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                                    @Param("regionId") Long regionId);
 
     // ... (Keep the rest of your statistics queries: findLowStockStoresForInvestor, findTopSellingProducts, etc.) ...
-    @Query("SELECT s.storeId, s.city.name, p.productName, pi.quantity FROM Inventory pi JOIN pi.product p JOIN pi.store s WHERE p.id_inv.userId = :investorId AND pi.quantity < 15")
+    @Query("SELECT p.productId, s.storeId, s.city.name, p.productName, pi.quantity FROM Inventory pi JOIN pi.product p JOIN pi.store s WHERE p.id_inv.userId = :investorId AND pi.quantity < 15")
     List<Object[]> findLowStockStoresForInvestor(@Param("investorId") Long investorId);
+
+    @Query("SELECT p.productId, s.storeId, s.city.name, p.productName, pi.quantity FROM Inventory pi JOIN pi.product p JOIN pi.store s WHERE (:storeId IS NULL OR s.storeId = :storeId) AND pi.quantity < 15")
+    List<Object[]> findLowStockByStore(@Param("storeId") Long storeId);
 
     @Query("SELECT p.productName, SUM((oi.price - (oi.price * oi.discount)) * oi.quantity), c.categoryName FROM Order o JOIN o.items oi JOIN oi.product p JOIN p.subcategory sub JOIN sub.category c WHERE o.orderDate BETWEEN :start AND :end AND (:investorId IS NULL OR p.id_inv.userId = :investorId) AND (:storeId IS NULL OR o.caissier.store.storeId = :storeId) GROUP BY p.productId, p.productName, c.categoryName ORDER BY 2 DESC")
     List<Object[]> findTopSellingProducts(@Param("start") LocalDate start, @Param("end") LocalDate end, @Param("investorId") Long investorId, @Param("storeId") Long storeId, Pageable pageable);

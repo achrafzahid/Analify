@@ -72,6 +72,24 @@ public class ProductController {
         }
     }
 
+    @GetMapping("/{id}/suggested-stock")
+    public ResponseEntity<Integer> getSuggestedStock(
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
+            @PathVariable Long id,
+            @RequestParam Long storeId) {
+        try {
+            // Only investors and admin can get suggestions
+            if (role != UserRole.INVESTOR && role != UserRole.ADMIN_G) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            Integer suggested = productService.getSuggestedStockQuantity(id, storeId);
+            return ResponseEntity.ok(suggested);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @PutMapping("/{id}/stock")
     public ResponseEntity<InventoryDTO> updateProductStock(
             @RequestAttribute("userId") Long userId,
@@ -88,9 +106,10 @@ public class ProductController {
     @GetMapping("/alerts/low-stock")
     public ResponseEntity<List<LowStockAlertDTO>> getLowStockAlerts(
             @RequestAttribute("userId") Long userId,
-            @RequestAttribute("role") UserRole role) {
+            @RequestAttribute("role") UserRole role,
+            @RequestParam(required = false) Long storeId) {
         try {
-            return ResponseEntity.ok(productService.getInvestorLowStockReport(userId, role));
+            return ResponseEntity.ok(productService.getInvestorLowStockReport(userId, role, storeId));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }

@@ -35,7 +35,7 @@ public class Section {
     private Double currentPrice;
 
     @Column(name = "status", nullable = false)
-    private String status ="CLOSE"; 
+    private String status = "OPEN"; 
     @Column(name = "date_delai")
     private LocalDate dateDelai; // Date limite de l'enchère
 

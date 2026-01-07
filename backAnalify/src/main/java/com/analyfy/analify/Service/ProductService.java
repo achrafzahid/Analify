@@ -28,6 +28,7 @@ public class ProductService {
     private final StoreRepository storeRepository;
     private final AdminStoreRepository adminStoreRepository;
     private final CaissierRepository caissierRepository;
+    private final UserRepository userRepository;
     
     private final ProductMapper productMapper;
     private final InventoryMapper inventoryMapper;
@@ -65,16 +66,34 @@ public class ProductService {
     }
 
     // --- REPORTING ---
-    public List<LowStockAlertDTO> getInvestorLowStockReport(Long userId, UserRole role) {
-        if (role != UserRole.INVESTOR) throw new RuntimeException("Unauthorized");
-        List<Object[]> results = productRepository.findLowStockStoresForInvestor(userId);
+    public List<LowStockAlertDTO> getInvestorLowStockReport(Long userId, UserRole role, Long storeId) {
+        List<Object[]> results;
+        
+        if (role == UserRole.INVESTOR) {
+            // Investor sees only their products across all stores
+            results = productRepository.findLowStockStoresForInvestor(userId);
+        } else if (role == UserRole.ADMIN_STORE) {
+            // Admin Store sees only their store - fetch store from user
+            Long adminStoreId = userRepository.findById(userId)
+                .filter(u -> u instanceof com.analyfy.analify.Entity.AdminStore)
+                .map(u -> ((com.analyfy.analify.Entity.AdminStore) u).getStore().getStoreId())
+                .orElseThrow(() -> new RuntimeException("Store not found for admin"));
+            results = productRepository.findLowStockByStore(adminStoreId);
+        } else if (role == UserRole.ADMIN_G) {
+            // Admin G can filter by store or see all stores
+            results = productRepository.findLowStockByStore(storeId);
+        } else {
+            throw new RuntimeException("Unauthorized");
+        }
+        
         List<LowStockAlertDTO> alerts = new ArrayList<>();
         for (Object[] row : results) {
             LowStockAlertDTO dto = new LowStockAlertDTO();
-            dto.setStoreId((Long) row[0]);
-            dto.setStoreCity((String) row[1]);
-            dto.setProductName((String) row[2]);
-            dto.setQuantity((Integer) row[3]);
+            dto.setProductId((Long) row[0]);
+            dto.setStoreId((Long) row[1]);
+            dto.setStoreCity((String) row[2]);
+            dto.setProductName((String) row[3]);
+            dto.setQuantity((Integer) row[4]);
             alerts.add(dto);
         }
         return alerts;
@@ -192,8 +211,32 @@ public class ProductService {
                 return newInv;
             });
 
-        inventory.setQuantity(request.getQuantity());
+        // Add to existing quantity instead of replacing
+        inventory.setQuantity(inventory.getQuantity() + request.getQuantity());
         return inventoryMapper.toDto(productItemsRepository.save(inventory));
+    }
+
+    /**
+     * Get suggested stock refill quantity for a product
+     */
+    public Integer getSuggestedStockQuantity(Long productId, Long storeId) {
+        Product product = productRepository.findById(productId).orElseThrow();
+        
+        // Get current stock for this product at this store
+        Integer currentStock = productItemsRepository
+            .findByStoreStoreIdAndProductProductId(storeId, productId)
+            .map(Inventory::getQuantity)
+            .orElse(0);
+        
+        // Calculate recommended stock based on current level
+        return calculateRecommendedStock(currentStock);
+    }
+    
+    private int calculateRecommendedStock(int currentStock) {
+        if (currentStock < 5) return 50;
+        if (currentStock < 10) return 40;
+        if (currentStock < 20) return 30;
+        return 25;
     }
 
     // --- READ ONLY ---
