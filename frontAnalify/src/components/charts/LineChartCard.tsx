@@ -12,27 +12,42 @@ import {
 
 interface LineChartCardProps {
   title: string;
+  description?: string;
   data: Record<string, unknown>[];
-  dataKeys: { key: string; color: string; name?: string }[];
-  xAxisKey: string;
+  xKey: string;
+  yKeys: string[];
+  colors?: string[];
   height?: number;
 }
 
 export const LineChartCard: React.FC<LineChartCardProps> = ({
   title,
+  description,
   data,
-  dataKeys,
-  xAxisKey,
+  xKey,
+  yKeys,
+  colors = ['hsl(142, 76%, 36%)'],
   height = 300,
 }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="stat-card animate-fade-in p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
+        {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
+        <p className="text-sm text-muted-foreground">No data available</p>
+      </div>
+    );
+  }
+  
   return (
-    <div className="stat-card animate-fade-in" style={{ height: height + 60 }}>
-      <h3 className="text-lg font-semibold text-foreground mb-4">{title}</h3>
+    <div className="stat-card animate-fade-in p-6">
+      <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
+      {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
       <ResponsiveContainer width="100%" height={height}>
         <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis 
-            dataKey={xAxisKey} 
+            dataKey={xKey} 
             tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
             stroke="hsl(var(--border))"
           />
@@ -49,15 +64,14 @@ export const LineChartCard: React.FC<LineChartCardProps> = ({
             }}
           />
           <Legend />
-          {dataKeys.map((dk) => (
+          {yKeys.map((key, index) => (
             <Line
-              key={dk.key}
+              key={key}
               type="monotone"
-              dataKey={dk.key}
-              stroke={dk.color}
-              name={dk.name || dk.key}
+              dataKey={key}
+              stroke={colors[index % colors.length]}
               strokeWidth={2}
-              dot={{ fill: dk.color, strokeWidth: 2 }}
+              dot={{ fill: colors[index % colors.length], strokeWidth: 2 }}
               activeDot={{ r: 6 }}
             />
           ))}

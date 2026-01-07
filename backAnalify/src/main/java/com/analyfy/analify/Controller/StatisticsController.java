@@ -3,6 +3,7 @@ package com.analyfy.analify.Controller;
 import com.analyfy.analify.DTO.Statistics.*;
 import com.analyfy.analify.Enum.UserRole;
 import com.analyfy.analify.Service.StatisticsService;
+import com.analyfy.analify.Service.EnhancedStatisticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import java.util.Map;
 public class StatisticsController {
 
     private final StatisticsService statisticsService;
+    private final EnhancedStatisticsService enhancedStatisticsService;
 
     @GetMapping("/dashboard")
     public ResponseEntity<DashboardStatsDTO> getDashboard(
@@ -37,6 +39,27 @@ public class StatisticsController {
                 .build();
 
         return ResponseEntity.ok(statisticsService.getDashboard(userId, role, filter));
+    }
+
+    @GetMapping("/dashboard/enhanced")
+    public ResponseEntity<EnhancedDashboardDTO> getEnhancedDashboard(
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("role") UserRole role,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) Long storeId,
+            @RequestParam(required = false) Long investorId,
+            @RequestParam(required = false) Long productId) {
+
+        StatisticsFilterDTO filter = StatisticsFilterDTO.builder()
+                .startDate(startDate)
+                .endDate(endDate)
+                .storeId(storeId)
+                .investorId(investorId)
+                .productId(productId)
+                .build();
+
+        return ResponseEntity.ok(enhancedStatisticsService.getEnhancedDashboard(userId, role, filter));
     }
 
     @GetMapping("/predictions")

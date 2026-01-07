@@ -44,4 +44,57 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
     
     // Trouver toutes les enchères OUTBID d'une section
     List<Bid> findBySectionSectionIdAndStatus(Long sectionId, String status);
+    
+    // =============== STATISTICS QUERIES ===============
+    
+    // Total bids value
+    @Query("SELECT COALESCE(SUM(b.amount), 0.0) FROM Bid b WHERE (:investorId IS NULL OR b.investor.userId = :investorId)")
+    Double calculateTotalBidsValue(@Param("investorId") Long investorId);
+    
+    // Count bids in date range
+    @Query("SELECT COUNT(b) FROM Bid b WHERE b.bidTime BETWEEN :startDate AND :endDate AND (:investorId IS NULL OR b.investor.userId = :investorId)")
+    Long countBidsBetweenDates(@Param("startDate") LocalDateTime startDate, 
+                                @Param("endDate") LocalDateTime endDate, 
+                                @Param("investorId") Long investorId);
+    
+    // Average bids per section - Simplified version
+    @Query("SELECT COUNT(b) FROM Bid b WHERE (:investorId IS NULL OR b.investor.userId = :investorId)")
+    Long countTotalBids(@Param("investorId") Long investorId);
+    
+    // Most active investors (by bid count)
+    @Query("SELECT CONCAT('Investor #', CAST(i.userId AS string)), i.userName, COUNT(b) FROM Bid b " +
+           "JOIN b.investor i " +
+           "GROUP BY i.userId, i.userName " +
+           "ORDER BY COUNT(b) DESC")
+    List<Object[]> findMostActiveInvestors();
+    
+    // Top bidders by total amount
+    @Query("SELECT CONCAT('Investor #', CAST(i.userId AS string)), i.userName, COALESCE(SUM(b.amount), 0.0) FROM Bid b " +
+           "JOIN b.investor i " +
+           "GROUP BY i.userId, i.userName " +
+           "ORDER BY COALESCE(SUM(b.amount), 0.0) DESC")
+    List<Object[]> findTopBiddersByAmount();
+    
+    // Bids over time (time series)
+    @Query("SELECT CAST(b.bidTime AS date), COUNT(b) FROM Bid b " +
+           "WHERE b.bidTime BETWEEN :startDate AND :endDate AND (:investorId IS NULL OR b.investor.userId = :investorId) " +
+           "GROUP BY CAST(b.bidTime AS date) " +
+           "ORDER BY CAST(b.bidTime AS date)")
+    List<Object[]> findBidsOverTime(@Param("startDate") LocalDateTime startDate, 
+                                     @Param("endDate") LocalDateTime endDate, 
+                                     @Param("investorId") Long investorId);
+    
+    // Win rate for an investor
+    @Query("SELECT " +
+           "CAST(COUNT(CASE WHEN b.status = 'WINNER' THEN 1 END) AS double) / NULLIF(COUNT(b), 0) * 100 " +
+           "FROM Bid b WHERE b.investor.userId = :investorId")
+    Double calculateWinRate(@Param("investorId") Long investorId);
+    
+    // Total winning bids count
+    @Query("SELECT COUNT(b) FROM Bid b WHERE b.status = 'WINNER' AND (:investorId IS NULL OR b.investor.userId = :investorId)")
+    Long countWinningBids(@Param("investorId") Long investorId);
+    
+    // Bids by status
+    @Query("SELECT b.status, COUNT(b) FROM Bid b WHERE (:investorId IS NULL OR b.investor.userId = :investorId) GROUP BY b.status")
+    List<Object[]> countBidsByStatus(@Param("investorId") Long investorId);
 }

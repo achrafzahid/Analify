@@ -39,6 +39,7 @@ const API_URLS = {
   
   // Statistics/Analytics
   GET_DASHBOARD_STATS: `${API_BASE_URL}/analytics/dashboard`,
+  GET_ENHANCED_DASHBOARD: `${API_BASE_URL}/analytics/dashboard/enhanced`,
   GET_PREDICTIONS: `${API_BASE_URL}/analytics/predictions`,
   DEEP_SEARCH: `${API_BASE_URL}/analytics/deep-search`,
   
@@ -318,6 +319,8 @@ export interface DashboardStats {
 export const statsApi = {
   getDashboard: (filters?: StatisticsFilters) =>
     apiRequest<DashboardStats>(`${API_URLS.GET_DASHBOARD_STATS}${buildQueryString(filters || {})}`),
+  getEnhancedDashboard: (filters?: StatisticsFilters) =>
+    apiRequest(`${API_URLS.GET_ENHANCED_DASHBOARD}${buildQueryString(filters || {})}`),
   getPredictions: (metric: string, filters?: StatisticsFilters) =>
     apiRequest(`${API_URLS.GET_PREDICTIONS}${buildQueryString({ metric, ...filters })}`),
   deepSearch: (query: string) =>

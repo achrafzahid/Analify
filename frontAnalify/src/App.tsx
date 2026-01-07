@@ -16,7 +16,7 @@ import Profile from "./pages/dashboard/Profile";
 import Orders from "./pages/dashboard/Orders";
 import Employees from "./pages/dashboard/Employees";
 import Products from "./pages/dashboard/Products";
-import Statistics from "./pages/dashboard/Statistics";
+import Statistics from "./pages/dashboard/EnhancedStatistics";
 import LowStock from "./pages/dashboard/LowStock";
 import BiddingDashboard from "./pages/dashboard/BiddingDashboard";
 import BiddingBrowse from "./pages/dashboard/BiddingBrowse";

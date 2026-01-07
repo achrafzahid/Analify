@@ -27,7 +27,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
 }) => {
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchField, setSearchField] = useState(searchConfig.searchableFields[0]?.value || '');
+  const [searchField, setSearchField] = useState(searchConfig?.searchableFields?.[0]?.value || '');
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleFilterChange = (field: string, value: string) => {

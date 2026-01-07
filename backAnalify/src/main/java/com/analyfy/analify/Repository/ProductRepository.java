@@ -19,6 +19,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByProductNameContainingIgnoreCase(String query);
     List<Product> findBySubcategorySubId(Long subId);
     List<Product> findBySubcategoryCategoryCategoryId(Long categoryId);
+    
+    // Count products by investor
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.id_inv.userId = :investorId")
+    Long countByInvestorUserId(@Param("investorId") Long investorId);
 
     // --- ENTITY FETCHING QUERIES (Keep these as they were) ---
     @Query("SELECT p FROM Product p WHERE p.id_inv.userId = :investorId")
