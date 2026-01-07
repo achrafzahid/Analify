@@ -20,6 +20,7 @@ import {
   Calendar,
   Flame,
   Lightbulb,
+  Download,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +34,7 @@ import { FilterPanel } from '@/components/shared/FilterPanel';
 import { LineChartCard, BarChartCard, PieChartCard, AreaChartCard } from '@/components/charts';
 import { useAuth } from '@/contexts/AuthContext';
 import { statsApi, type StatisticsFilters } from '@/services/api';
+import { Button } from '@/components/ui/button';
 
 const EnhancedStatistics = () => {
   const { user } = useAuth();
@@ -97,6 +99,100 @@ const EnhancedStatistics = () => {
     return type === 'WARNING' ? 'destructive' : 'default';
   };
 
+  const handleExportPdf = async () => {
+    if (!dashboard) return;
+
+    const [jsPDFModule, html2canvasModule]: any = await Promise.all([
+      import('jspdf'),
+      import('html2canvas'),
+    ]);
+
+    const doc = new jsPDFModule.jsPDF();
+
+    // Header
+    doc.setFontSize(18);
+    doc.text('Analytics Dashboard Report', 10, 15);
+
+    doc.setFontSize(11);
+    const generatedAt = new Date().toLocaleString();
+    doc.text(`Generated at: ${generatedAt}`, 10, 22);
+
+    // Summary section
+    let y = 32;
+    const addLine = (label: string, value: string | number | undefined) => {
+      const safeValue = value === undefined || value === null ? '-' : String(value);
+      doc.text(`${label}: ${safeValue}`, 10, y);
+      y += 6;
+    };
+
+    doc.setFontSize(14);
+    doc.text('Summary KPIs', 10, y);
+    y += 8;
+    doc.setFontSize(11);
+
+    addLine('Total Revenue', (dashboard as any)?.totalRevenue?.toFixed?.(2));
+    addLine('Total Orders', (dashboard as any)?.totalOrders);
+    addLine('Total Products Sold', (dashboard as any)?.totalProductsSold);
+    addLine('Average Order Value', (dashboard as any)?.averageOrderValue?.toFixed?.(2));
+    addLine('Low Stock Count', (dashboard as any)?.lowStockCount);
+
+    // Financial block
+    if (financial) {
+      y += 4;
+      doc.setFontSize(14);
+      doc.text('Financial Summary', 10, y);
+      y += 8;
+      doc.setFontSize(11);
+
+      addLine('Net Profit', financial.netProfit?.toFixed?.(2));
+      addLine('Gross Margin %', financial.grossMarginPercentage?.toFixed?.(2));
+      addLine('Inventory Value', financial.inventoryValue?.toFixed?.(2));
+      addLine('Expected Income', financial.expectedIncome?.toFixed?.(2));
+    }
+
+    // Key insights
+    if (Array.isArray(insights) && insights.length) {
+      y += 4;
+      doc.setFontSize(14);
+      doc.text('Key Insights', 10, y);
+      y += 8;
+      doc.setFontSize(11);
+
+      insights.slice(0, 5).forEach((ins: any, index: number) => {
+        const text = `• ${ins.title || ins.message || ins.type}`;
+        doc.text(text, 12, y);
+        y += 6;
+        if (y > 270 && index < insights.length - 1) {
+          doc.addPage();
+          y = 20;
+        }
+      });
+    }
+
+    // Charts snapshot on a new page
+    const overviewElement = document.getElementById('analytics-overview');
+    if (overviewElement) {
+      const html2canvas = html2canvasModule.default || html2canvasModule;
+      const canvas = await html2canvas(overviewElement as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 10;
+      const imgWidth = pageWidth - margin * 2;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      doc.addPage();
+      doc.setFontSize(14);
+      doc.text('Overview Charts & Distribution', margin, 20);
+      doc.addImage(imgData, 'PNG', margin, 28, imgWidth, imgHeight);
+    }
+
+    doc.save('analytics-dashboard.pdf');
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6 p-6">
@@ -120,6 +216,10 @@ const EnhancedStatistics = () => {
             Comprehensive insights and predictions for your business
           </p>
         </div>
+        <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={handleExportPdf}>
+          <Download className="h-4 w-4" />
+          <span>Export PDF</span>
+        </Button>
       </div>
 
       {/* Insights Banner */}
@@ -157,7 +257,7 @@ const EnhancedStatistics = () => {
         </TabsList>
 
         {/* OVERVIEW TAB */}
-        <TabsContent value="overview" className="space-y-4">
+        <TabsContent value="overview" className="space-y-4" id="analytics-overview">
           {/* Core KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard

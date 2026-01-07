@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -75,8 +75,53 @@ export function DataTable<T>({
   const startItem = (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, data.length);
 
+  const exportToCsv = () => {
+    if (!data.length || !columns.length) return;
+
+    const exportableColumns = columns.filter((col) => String(col.key) !== 'actions');
+    if (!exportableColumns.length) return;
+
+    const headers = exportableColumns.map((col) => col.header);
+    const rows = data.map((item) =>
+      exportableColumns
+        .map((col) => {
+          const raw = getValue(item, col.key);
+          const value = raw == null ? '' : String(raw);
+          const escaped = value.replace(/"/g, '""');
+          return `"${escaped}"`;
+        })
+        .join(',')
+    );
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    link.href = url;
+    link.setAttribute('download', `export-${timestamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        {data.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+            onClick={exportToCsv}
+          >
+            <Download className="h-4 w-4" />
+            <span>Export CSV</span>
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-lg border border-border overflow-hidden bg-card shadow-card">
         <div className="overflow-x-auto">
           <table className="w-full">

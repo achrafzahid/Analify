@@ -19,6 +19,7 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
   ADMIN_STORE: [
     { label: 'Store Orders', path: '/dashboard/orders', icon: ShoppingCart },
     { label: 'Manage Employees', path: '/dashboard/employees', icon: Users },
+    { label: 'Low Stock Alerts', path: '/dashboard/low-stock', icon: AlertTriangle },
     { label: 'Statistics', path: '/dashboard/statistics', icon: BarChart3 },
     { label: 'Personal Data', path: '/dashboard/profile', icon: User },
   ],

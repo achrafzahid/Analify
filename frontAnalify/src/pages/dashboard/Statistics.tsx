@@ -8,6 +8,7 @@ import {
   Store,
   Briefcase,
   Loader2,
+  Download,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -118,6 +119,28 @@ const Statistics: React.FC = () => {
       </div>
     );
   }
+
+  const handleExportPdf = async () => {
+    const jsPDFModule: any = await import('jspdf');
+    const doc = new jsPDFModule.jsPDF();
+
+    doc.setFontSize(18);
+    doc.text('Statistics Overview Report', 10, 15);
+
+    doc.setFontSize(12);
+    let y = 30;
+    const addLine = (label: string, value: string | number | undefined) => {
+      const safeValue = value === undefined || value === null ? '-' : String(value);
+      doc.text(`${label}: ${safeValue}`, 10, y);
+      y += 7;
+    };
+
+    addLine('Sample Orders (Jan)', ordersOverTimeData[0].orders);
+    addLine('Sample Revenue (Jan)', ordersOverTimeData[0].revenue);
+    addLine('Top Category', productSalesData[0].name);
+
+    doc.save('statistics-overview.pdf');
+  };
 
   // Role-based filter configurations
   const getFilters = (): FilterConfig[] => {
