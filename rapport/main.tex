@@ -27,10 +27,11 @@
 	urlcolor=blue,
 	citecolor=blue
 }
+% Float package for [H] positioning (screenshots chapter)
+\usepackage{float}
 
-% Bibliographie
-\usepackage[style=numeric,sorting=none]{biblatex}
-\addbibresource{references.bib}
+% Bibliography - Simple thebibliography environment (no external packages needed)
+% We'll use manual bibliography at the end
 
 % Listings de code
 \usepackage{listings}
@@ -102,7 +103,7 @@
     \begin{minipage}{0.45\textwidth}
         \begin{flushright} \large
             \emph{Encadré par :}\\
-            \textbf{M. GHERRABI}
+            \textbf{M. GHERABI}
         \end{flushright}
     \end{minipage}
     
@@ -113,7 +114,76 @@
     
 \end{titlepage}
 
+% Résumé
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+
+Ce projet présente \textbf{Analify}, une plateforme complète d'analytique et de bidding pour la grande distribution. Analify permet aux entreprises de centraliser et d'exploiter leurs données métier (ventes, stocks, commandes) à travers un dashboard interactif, un système d'enchères pour les emplacements de rayons, et un assistant analytique basé sur l'intelligence artificielle.
+
+\vspace{0.5cm}
+
+\textbf{Architecture technique :}
+\begin{itemize}
+	\item \textbf{Backend} : Spring Boot 3.4.13, Java 21, PostgreSQL, Spring Security (JWT), Spring AI
+	\item \textbf{Frontend} : React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui
+	\item \textbf{Déploiement} : Docker Compose, multi-stage builds, orchestration de 4 services
+	\item \textbf{Intelligence Artificielle} : Ollama (LLaMA 3.2:3b), accélération GPU, contexte étendu 8192 tokens
+\end{itemize}
+
+\vspace{0.5cm}
+
+\textbf{Fonctionnalités principales :}
+\begin{itemize}
+	\item Tableaux de bord analytiques personnalisés par rôle (Admin Global, Admin Magasin, Investisseur, Caissier)
+	\item Système de bidding hiérarchique (Catégories → Rangs → Faces → Sections)
+	\item Assistant conversationnel LLM pour requêtes en langage naturel
+	\item Gestion complète des stocks, produits, commandes avec alertes automatiques
+	\item Exports PDF et CSV, visualisations interactives, filtres avancés
+\end{itemize}
+
+\vspace{0.5cm}
+
+\textbf{Mots-clés :} Analytics, Bidding, Spring Boot, React, Docker, LLM, JWT, PostgreSQL, Ollama, Intelligence Artificielle, Grande Distribution
+
+\newpage
+
+% Remerciements
+\chapter*{Remerciements}
+\addcontentsline{toc}{chapter}{Remerciements}
+
+Nous tenons à exprimer notre profonde gratitude à toutes les personnes qui ont contribué, de près ou de loin, à la réalisation de ce projet de fin d'études.
+
+\vspace{0.5cm}
+
+Nos remerciements s'adressent en premier lieu à \textbf{Monsieur GHERABI}, notre encadrant pédagogique, pour son soutien constant, ses conseils avisés et sa disponibilité tout au long de ce travail. Ses orientations nous ont permis de structurer efficacement notre démarche et d'approfondir nos compétences techniques.
+
+\vspace{0.5cm}
+
+Nous remercions également l'\textbf{École Nationale des Sciences Appliquées de Khouribga (ENSA Khouribga)} et l'ensemble du corps professoral de la filière \textbf{Informatique et Ingénierie des Données} pour la qualité de la formation dispensée et les connaissances solides acquises durant notre cursus.
+
+\vspace{0.5cm}
+
+Nous exprimons notre reconnaissance à la \textbf{communauté open source} et aux contributeurs des technologies utilisées dans ce projet (Spring Framework, React, Docker, Ollama, PostgreSQL, etc.) dont les outils et la documentation ont été essentiels à la réalisation d'Analify.
+
+\vspace{0.5cm}
+
+Enfin, nous adressons nos remerciements les plus sincères à nos \textbf{familles} et \textbf{proches} pour leur soutien moral, leur patience et leurs encouragements continus, qui nous ont permis de mener à bien ce projet dans les meilleures conditions.
+
+\vspace{1cm}
+
+\begin{flushright}
+\textit{Achraf ZAHID \& Med Amine EL ARBANI}\\
+\textit{Janvier 2026}
+\end{flushright}
+
+\newpage
+
 \tableofcontents
+\newpage
+
+\listoffigures
+\addcontentsline{toc}{chapter}{Liste des figures}
+\newpage
 
 \chapter*{Introduction Générale}
 \addcontentsline{toc}{chapter}{Introduction Générale}
@@ -191,8 +261,7 @@ La communication entre les deux se fait exclusivement via des \textbf{API REST J
 
 \begin{figure}[h]
 	\centering
-	% \includegraphics[width=0.9\textwidth]{images/architecture-globale.png}
-	\fbox{\parbox{0.9\textwidth}{\centering \textit{(Capture d'écran / schéma de l'architecture globale à insérer ici)}}}
+	 \includegraphics[width=0.9\textwidth]{Images/architecture_V3.png}
 	\caption{Architecture globale front/back de la plateforme Analify}
 	\label{fig:archi-globale}
 \end{figure}
@@ -256,16 +325,56 @@ Cette approche garantit que même si le frontend tentait d'appeler un endpoint a
 
 % Chapitres détaillés externalisés dans le dossier chapters/
 \input{chapters/backend}
+\input{chapters/data_preparation}
 \input{chapters/frontend}
 \input{chapters/analytics}
 \input{chapters/bidding}
 \input{chapters/security}
 \input{chapters/llm_assistant}
 \input{chapters/tests_deployment}
+\input{chapters/screenshots}
 \input{chapters/conclusion}
 
-% Bibliographie
-\printbibliography[heading=bibintoc,title={Bibliographie}]
+% Bibliographie (manual - simple approach without biblatex)
+\begin{thebibliography}{99}
+
+\bibitem{spring-boot-docs}
+VMware, Inc. (2024). \textit{Spring Boot Reference Documentation}. Version 3.4.x. 
+\url{https://docs.spring.io/spring-boot/docs/current/reference/html/}
+
+\bibitem{react-docs}
+Meta Platforms, Inc. (2024). \textit{React Documentation}. Version 18.x. 
+\url{https://react.dev/}
+
+\bibitem{docker-docs}
+Docker Inc. (2024). \textit{Docker Documentation}. 
+\url{https://docs.docker.com/}
+
+\bibitem{postgresql-docs}
+PostgreSQL Global Development Group (2024). \textit{PostgreSQL Documentation}. Version 16. 
+\url{https://www.postgresql.org/docs/current/}
+
+\bibitem{ollama-docs}
+Ollama (2024). \textit{Get up and running with large language models locally}. 
+\url{https://ollama.ai/}
+
+\bibitem{vaswani2017attention}
+Vaswani, A., et al. (2017). \textit{Attention is all you need}. Advances in neural information processing systems, 30.
+
+\bibitem{newman2021microservices}
+Newman, Sam (2021). \textit{Building Microservices: Designing Fine-Grained Systems}. 2nd Edition. O'Reilly Media.
+
+\bibitem{martin2017clean}
+Martin, Robert C. (2017). \textit{Clean Architecture: A Craftsman's Guide to Software Structure and Design}. Prentice Hall.
+
+\bibitem{jones2015jwt}
+Jones, M., Bradley, J., Sakimura, N. (2015). \textit{JSON Web Token (JWT)}. RFC 7519, IETF.
+
+\bibitem{spring-security-docs}
+VMware, Inc. (2024). \textit{Spring Security Reference}. 
+\url{https://docs.spring.io/spring-security/reference/index.html}
+
+\end{thebibliography}
 
 \end{document}
 

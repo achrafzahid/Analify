@@ -35,7 +35,6 @@ Plusieurs aspects se distinguent particulièrement :
 En dépit de ces points positifs, le projet présente certaines limites :
 
 \begin{itemize}
-	\item \textbf{Données simulées} : les données utilisées pour les tableaux de bord et le bidding sont générées ou simulées ; une intégration avec des systèmes de production (ERP, caisse) nécessiterait un travail supplémentaire ;
 	\item \textbf{Couverture de tests partielle} : bien que des tests unitaires et des validations manuelles existent, une couverture de tests plus large (tests end-to-end automatisés, tests de performance) serait souhaitable pour un déploiement en production ;
 	\item \textbf{LLM non spécialisé} : le modèle utilisé (par exemple \texttt{llama3.2} via Ollama) n'est pas spécifiquement entraîné sur des données de retail, ce qui peut limiter la précision de certaines analyses fines ;
 	\item \textbf{Scalabilité non éprouvée} : les choix techniques (Spring Boot, React, Postgres) sont scalables, mais l'application n'a pas été soumise à des tests de charge massifs.

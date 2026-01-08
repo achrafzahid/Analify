@@ -1,0 +1,37 @@
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Architecture globale front/back de la plateforme Analify}}{13}{figure.2.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Vue simplifiée du modèle de données backend}}{21}{figure.3.1}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {7.1}{\ignorespaces Vue simplifiée du modèle de domaine du bidding}}{52}{figure.7.1}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {11.1}{\ignorespaces Landing Page - Interface d'accueil de la plateforme Analify}}{78}{figure.11.1}%
+\contentsline {figure}{\numberline {11.2}{\ignorespaces Page de Connexion - Authentification JWT}}{79}{figure.11.2}%
+\contentsline {figure}{\numberline {11.3}{\ignorespaces Dashboard Administrateur Global - Vue d'ensemble complète}}{80}{figure.11.3}%
+\contentsline {figure}{\numberline {11.4}{\ignorespaces Dashboard Responsable de Magasin - Vue limitée à son périmètre}}{81}{figure.11.4}%
+\contentsline {figure}{\numberline {11.5}{\ignorespaces Dashboard Investisseur - Suivi de portefeuille}}{82}{figure.11.5}%
+\contentsline {figure}{\numberline {11.6}{\ignorespaces Statistiques Enrichies - Analytique avancée avec filtres}}{83}{figure.11.6}%
+\contentsline {figure}{\numberline {11.7}{\ignorespaces Panel de Filtres - Contrôle granulaire des visualisations}}{84}{figure.11.7}%
+\contentsline {figure}{\numberline {11.8}{\ignorespaces Liste des Produits - Gestion d'inventaire}}{85}{figure.11.8}%
+\contentsline {figure}{\numberline {11.9}{\ignorespaces Liste des Commandes - Suivi des ventes}}{86}{figure.11.9}%
+\contentsline {figure}{\numberline {11.10}{\ignorespaces Création de Commande - Interface caissier}}{87}{figure.11.10}%
+\contentsline {figure}{\numberline {11.11}{\ignorespaces Catégories de Bidding - Navigation hiérarchique}}{88}{figure.11.11}%
+\contentsline {figure}{\numberline {11.12}{\ignorespaces Sections Disponibles - Emplacements ouverts au bidding}}{88}{figure.11.12}%
+\contentsline {figure}{\numberline {11.13}{\ignorespaces Placement d'Enchère - Formulaire d'investissement}}{89}{figure.11.13}%
+\contentsline {figure}{\numberline {11.14}{\ignorespaces Mes Enchères - Suivi du portefeuille d'investissements}}{90}{figure.11.14}%
+\contentsline {figure}{\numberline {11.15}{\ignorespaces Assistant Analytique LLM - Interface conversationnelle}}{91}{figure.11.15}%
+\contentsline {figure}{\numberline {11.16}{\ignorespaces Exemples de Questions - Suggestions contextuelles}}{92}{figure.11.16}%
+\contentsline {figure}{\numberline {11.17}{\ignorespaces Gestion des Utilisateurs - Administration des comptes}}{93}{figure.11.17}%
+\contentsline {figure}{\numberline {11.18}{\ignorespaces Profil Utilisateur - Informations personnelles}}{94}{figure.11.18}%
+\contentsline {figure}{\numberline {11.19}{\ignorespaces Rapport PDF - Export professionnel}}{95}{figure.11.19}%
+\contentsline {figure}{\numberline {11.20}{\ignorespaces Export CSV - Données brutes pour tableur}}{95}{figure.11.20}%
+\contentsline {figure}{\numberline {11.21}{\ignorespaces Messages d'Erreur - Retour utilisateur explicite}}{96}{figure.11.21}%
+\contentsline {figure}{\numberline {11.22}{\ignorespaces Système de Notifications - Alertes temps réel}}{97}{figure.11.22}%

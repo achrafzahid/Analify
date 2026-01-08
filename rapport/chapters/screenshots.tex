@@ -1,0 +1,570 @@
+\chapter{Captures d'écran et Démonstration de l'Interface}
+
+Ce chapitre présente les principales interfaces de la plateforme Analify à travers des captures d'écran commentées. L'objectif est de donner une vision concrète de l'expérience utilisateur et de montrer comment les fonctionnalités décrites dans les chapitres précédents se matérialisent visuellement.
+
+\section{Page d'Accueil et Landing Page}
+
+\subsection{Landing Page}
+
+La page d'accueil constitue le premier point de contact avec la plateforme. Elle présente de manière claire et attractive les principales fonctionnalités d'Analify.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran de la landing page
+	\includegraphics[width=0.8\textwidth]{Images/1st.png}
+	\caption{Landing Page - Interface d'accueil de la plateforme Analify}
+	\label{fig:landing-page}
+\end{figure}
+
+\textbf{Éléments visibles :}
+\begin{itemize}
+	\item Logo et branding Analify
+	\item Menu de navigation (Accueil, Fonctionnalités, À propos, Connexion)
+	\item Section hero avec titre accrocheur et call-to-action
+	\item Présentation des trois piliers : Analytics, Bidding, Assistant IA
+	\item Footer avec informations de contact
+\end{itemize}
+
+\textbf{Technologies utilisées :}
+\begin{itemize}
+	\item React + TypeScript pour la structure
+	\item Tailwind CSS pour le design responsive
+	\item shadcn/ui pour les composants modernes
+	\item Animations et transitions fluides
+\end{itemize}
+
+\section{Authentification et Connexion}
+
+\subsection{Page de Connexion}
+
+L'interface de connexion est sobre et sécurisée, permettant aux utilisateurs de s'authentifier avec leurs identifiants.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran de la page de login
+	\includegraphics[width=0.8\textwidth]{Images/2nd.png}
+	\caption{Page de Connexion - Authentification JWT}
+	\label{fig:login-page}
+\end{figure}
+
+\textbf{Fonctionnalités :}
+\begin{itemize}
+	\item Formulaire de connexion avec validation côté client
+	\item Champs email et mot de passe sécurisés
+	\item Messages d'erreur clairs en cas d'échec d'authentification
+	\item Redirection automatique vers le dashboard après connexion réussie
+	\item Gestion des tokens JWT stockés de manière sécurisée
+\end{itemize}
+
+\textbf{Sécurité :}
+\begin{itemize}
+	\item Authentification basée sur JWT (JSON Web Token)
+	\item Tokens expirés après 24 heures
+	\item Protection CSRF et CORS configurée côté backend
+	\item Hashage des mots de passe avec BCrypt
+\end{itemize}
+
+\section{Dashboard Principal - Vue d'Ensemble}
+
+\subsection{Dashboard pour Administrateur Global}
+
+Le tableau de bord principal offre une vue consolidée de l'ensemble des indicateurs métier, avec accès à toutes les statistiques de la plateforme.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran du dashboard admin global
+	\includegraphics[width=0.8\textwidth]{Images/3rd.png}
+	\caption{Dashboard Administrateur Global - Vue d'ensemble complète}
+	\label{fig:dashboard-admin-global}
+\end{figure}
+
+\textbf{Indicateurs affichés (ADMIN\_G) :}
+\begin{itemize}
+	\item \textbf{Revenus totaux} : Agrégation de tous les magasins
+	\item \textbf{Valeur totale du stock} : Inventaire global valorisé
+	\item \textbf{Nombre de commandes} : Total des transactions
+	\item \textbf{Produits vendus} : Quantité totale écoulée
+	\item \textbf{Graphique d'évolution des revenus} : Courbe temporelle (line chart)
+	\item \textbf{Top 10 magasins} : Classement par chiffre d'affaires (bar chart)
+	\item \textbf{Top 10 produits} : Produits les plus vendus (bar chart)
+	\item \textbf{Distribution par catégorie} : Répartition des ventes (pie chart)
+	\item \textbf{Alertes stock faible} : Nombre de produits sous le seuil
+\end{itemize}
+
+\subsection{Dashboard pour Responsable de Magasin}
+
+Les responsables de magasin (ADMIN\_STORE) ont accès uniquement aux données de leur(s) magasin(s) assigné(s).
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran du dashboard admin store
+	\includegraphics[width=0.8\textwidth]{Images/4th.png}
+
+	\caption{Dashboard Responsable de Magasin - Vue limitée à son périmètre}
+	\label{fig:dashboard-admin-store}
+\end{figure}
+
+\textbf{Périmètre restreint :}
+\begin{itemize}
+	\item Statistiques limitées aux magasins gérés par l'utilisateur
+	\item Impossibilité de voir les données d'autres magasins
+	\item Filtres pré-appliqués automatiquement par le backend
+	\item KPI identiques mais calculés sur un sous-ensemble
+\end{itemize}
+
+\subsection{Dashboard pour Investisseur}
+
+Les investisseurs (INVESTOR) visualisent uniquement les performances de leurs propres investissements et sections gagnées.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran du dashboard investisseur
+	\includegraphics[width=0.8\textwidth]{Images/5th.png}
+	\caption{Dashboard Investisseur - Suivi de portefeuille}
+	\label{fig:dashboard-investor}
+\end{figure}
+
+\textbf{Indicateurs spécifiques :}
+\begin{itemize}
+	\item \textbf{Sections gagnées} : Nombre d'enchères remportées
+	\item \textbf{Montant investi total} : Somme des bids gagnants
+	\item \textbf{Revenus générés} : Performance des emplacements
+	\item \textbf{ROI} : Retour sur investissement calculé
+	\item \textbf{Graphiques de performance} : Évolution temporelle des gains
+	\item \textbf{Alertes stock faible} : Pour les produits dans leurs sections
+\end{itemize}
+
+\section{Module d'Analytique Avancée}
+
+\subsection{Statistiques Enrichies}
+
+Le module d'analytique avancée offre des visualisations interactives et des métriques approfondies.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran des statistiques avancées
+	\includegraphics[width=0.8\textwidth]{Images/6th.png}
+	\caption{Statistiques Enrichies - Analytique avancée avec filtres}
+	\label{fig:enhanced-stats}
+\end{figure}
+
+\textbf{Fonctionnalités avancées :}
+\begin{itemize}
+	\item \textbf{Filtres dynamiques} : Par date, magasin, produit, catégorie, investisseur
+	\item \textbf{Graphiques interactifs} : Zoom, tooltip, sélection de périodes
+	\item \textbf{Prédictions} : Tendances futures basées sur l'historique
+	\item \textbf{Analyse comparative} : Comparaison de périodes (mois, trimestres)
+	\item \textbf{Exports} : Téléchargement CSV et PDF des rapports
+	\item \textbf{Tableaux détaillés} : Données brutes paginées et triables
+\end{itemize}
+
+\subsection{Panel de Filtres}
+
+Le composant \texttt{FilterPanel} permet un contrôle fin des données affichées.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran du panel de filtres
+	\includegraphics[width=0.8\textwidth]{Images/7th.png}
+	\caption{Panel de Filtres - Contrôle granulaire des visualisations}
+	\label{fig:filter-panel}
+\end{figure}
+
+\textbf{Contrôles disponibles :}
+\begin{itemize}
+	\item Sélecteur de plage de dates (date picker)
+	\item Dropdown de sélection de magasin (autorisés uniquement)
+	\item Dropdown de sélection de produit
+	\item Dropdown de sélection d'investisseur (ADMIN\_G uniquement)
+	\item Bouton \og Appliquer les filtres \fg{}
+	\item Bouton \og Réinitialiser \fg{} pour revenir aux valeurs par défaut
+\end{itemize}
+
+\section{Module de Gestion des Produits}
+
+\subsection{Liste des Produits}
+
+L'interface de gestion des produits affiche l'inventaire complet avec possibilité de recherche, filtrage et tri.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran de la liste des produits
+	\includegraphics[width=0.8\textwidth]{Images/prod.png}
+	\caption{Liste des Produits - Gestion d'inventaire}
+	\label{fig:products-list}
+\end{figure}
+
+\textbf{Informations affichées :}
+\begin{itemize}
+	\item Nom du produit
+	\item Catégorie
+	\item Prix unitaire
+	\item Quantité en stock
+	\item Seuil de stock minimum
+	\item Statut (En stock / Stock faible / Rupture)
+	\item Actions (Voir détails, Modifier, Supprimer)
+\end{itemize}
+
+\textbf{Fonctionnalités :}
+\begin{itemize}
+	\item Recherche en temps réel par nom ou catégorie
+	\item Tri par colonne (nom, prix, stock)
+	\item Pagination des résultats
+	\item Badges visuels pour les alertes stock faible
+	\item Export de la liste en CSV
+\end{itemize}
+
+
+\section{Module de Gestion des Commandes}
+
+\subsection{Liste des Commandes}
+
+L'interface de commandes permet de suivre l'ensemble des transactions de vente.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran de la liste des commandes
+	\includegraphics[width=0.8\textwidth]{Images/order.png}
+	\caption{Liste des Commandes - Suivi des ventes}
+	\label{fig:orders-list}
+\end{figure}
+
+\textbf{Colonnes affichées :}
+\begin{itemize}
+	\item Numéro de commande
+	\item Date et heure de création
+	\item Montant total
+	\item Nombre d'articles
+	\item Client/Caissier
+	\item Magasin
+	\item Statut (Complétée, En cours, Annulée)
+\end{itemize}
+
+\textbf{Fonctionnalités :}
+\begin{itemize}
+	\item Filtrage par période, magasin, statut
+	\item Recherche par numéro de commande
+	\item Export des données en CSV
+	\item Détails de chaque commande au clic
+	\item Indicateurs de performance (commandes/jour, panier moyen)
+\end{itemize}
+
+\subsection{Création d'une Nouvelle Commande}
+
+Le formulaire de création de commande permet aux caissiers d'enregistrer les ventes.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran du formulaire de création de commande
+	\includegraphics[width=0.8\textwidth]{Images/addorder.png}
+	\caption{Création de Commande - Interface caissier}
+	\label{fig:create-order}
+\end{figure}
+
+\textbf{Étapes du processus :}
+\begin{itemize}
+	\item Sélection du magasin (pré-rempli pour CAISSIER)
+	\item Ajout de produits via recherche/autocomplete
+	\item Définition des quantités
+	\item Calcul automatique du total avec taxes
+	\item Validation de disponibilité du stock
+	\item Confirmation et enregistrement
+	\item Mise à jour automatique du stock
+\end{itemize}
+
+\section{Module de Bidding - Système d'Enchères}
+
+\subsection{Navigation par Catégories}
+
+Le système de bidding commence par la sélection d'une catégorie d'emplacement.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran de la navigation catégories
+	\includegraphics[width=0.8\textwidth]{Images/investigate.png}
+	\caption{Catégories de Bidding - Navigation hiérarchique}
+	\label{fig:bidding-categories}
+\end{figure}
+
+\textbf{Organisation hiérarchique :}
+\begin{enumerate}
+	\item \textbf{Catégories} : Grandes familles d'emplacements (Électronique, Alimentaire, Mode, etc.)
+	\item \textbf{Rangs} : Emplacements au sein d'une catégorie
+	\item \textbf{Faces} : Côtés d'un rang (Face A, B, C, D)
+	\item \textbf{Sections} : Subdivisions d'une face (unité minimale d'enchère)
+\end{enumerate}
+
+\subsection{Vue des Sections Disponibles}
+
+L'interface affiche les sections ouvertes aux enchères avec leurs caractéristiques.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran des sections disponibles
+	\includegraphics[width=0.8\textwidth]{Images/sec.png}
+	\caption{Sections Disponibles - Emplacements ouverts au bidding}
+	\label{fig:bidding-sections}
+\end{figure}
+
+\textbf{Informations par section :}
+\begin{itemize}
+	\item Nom et localisation (Catégorie > Rang > Face > Section)
+	\item Statut (Ouverte, En cours, Fermée, Attribuée)
+	\item Prix de réserve (montant minimum)
+	\item Enchère actuelle la plus haute
+	\item Date limite de clôture
+	\item Nombre d'enchérisseurs
+	\item Bouton \og Placer une enchère \fg{}
+\end{itemize}
+
+\subsection{Placement d'une Enchère}
+
+Le formulaire de placement d'enchère permet aux investisseurs de soumettre leurs offres.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran du formulaire de bid
+	\includegraphics[width=0.8\textwidth]{Images/sec2.png}
+	\caption{Placement d'Enchère - Formulaire d'investissement}
+	\label{fig:place-bid}
+\end{figure}
+
+\textbf{Processus de bidding :}
+\begin{itemize}
+	\item Affichage du prix de réserve et de l'enchère actuelle
+	\item Saisie du montant proposé
+	\item Validation automatique (montant > enchère actuelle)
+	\item Message de confirmation
+	\item Notification en cas de surenchère par un autre investisseur
+	\item Mise à jour en temps réel de l'enchère gagnante
+\end{itemize}
+
+\subsection{Suivi des Enchères}
+
+Les investisseurs peuvent consulter l'historique de leurs enchères.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran du suivi des bids
+	\includegraphics[width=0.8\textwidth]{Images/suiv.png}
+	\caption{Mes Enchères - Suivi du portefeuille d'investissements}
+	\label{fig:my-bids}
+\end{figure}
+
+\textbf{Informations de suivi :}
+\begin{itemize}
+	\item Liste des sections sur lesquelles l'investisseur a enchéri
+	\item Montant de chaque enchère
+	\item Statut (Gagnant, Surenchéri, En cours, Fermée)
+	\item Date de placement
+	\item Historique complet des enchères par section
+	\item Notifications de changement de statut
+\end{itemize}
+
+\section{Assistant Analytique LLM}
+
+\subsection{Interface Chat}
+
+L'assistant analytique offre une interface conversationnelle pour interroger les données en langage naturel.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran de l'assistant LLM
+	\includegraphics[width=0.8\textwidth]{Images/llm1.png}
+	\caption{Assistant Analytique LLM - Interface conversationnelle}
+	\label{fig:llm-assistant}
+\end{figure}
+
+\textbf{Fonctionnalités de l'assistant :}
+\begin{itemize}
+	\item \textbf{Questions en langage naturel} : "Quels sont mes produits les plus rentables ce mois-ci ?"
+	\item \textbf{Réponses contextualisées} : L'assistant utilise les données agrégées filtrées par rôle
+	\item \textbf{Historique de conversation} : Maintien du contexte sur plusieurs échanges
+	\item \textbf{Suggestions de questions} : Propositions basées sur le profil utilisateur
+	\item \textbf{Visualisations intégrées} : L'assistant peut référencer les graphiques existants
+	\item \textbf{Export des conversations} : Sauvegarde de l'historique
+\end{itemize}
+
+\textbf{Architecture technique :}
+\begin{itemize}
+	\item Modèle : LLaMA 3.2:3b via Ollama (local, sans limite de taux)
+	\item Backend : Spring AI pour l'intégration
+	\item Contexte : 8192 tokens (conversations étendues)
+	\item Accélération : GPU RTX 4060 (100\% GPU)
+	\item Temps de réponse : 200-500ms (modèle en mémoire)
+\end{itemize}
+
+\subsection{Exemples de Questions}
+
+L'assistant peut répondre à divers types de questions métier :
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran d'exemples de questions
+	\includegraphics[width=0.8\textwidth]{Images/llm2.png}
+	\caption{Exemples de Questions - Suggestions contextuelles}
+	\label{fig:example-questions}
+\end{figure}
+
+\textbf{Catégories de questions supportées :}
+\begin{itemize}
+	\item \textbf{KPI et performance} : "Quel est mon chiffre d'affaires ce mois-ci ?"
+	\item \textbf{Produits} : "Quels produits sont en rupture de stock ?"
+	\item \textbf{Magasins} : "Quel magasin performe le mieux ?"
+	\item \textbf{Tendances} : "Les ventes sont-elles en hausse ou en baisse ?"
+	\item \textbf{Investissements} : "Combien ai-je investi dans le bidding ce mois-ci ?"
+	\item \textbf{Comparaisons} : "Comment se compare mon magasin par rapport à la moyenne ?"
+\end{itemize}
+
+\section{Gestion des Utilisateurs et Rôles}
+
+\subsection{Liste des Utilisateurs (Admin)}
+
+Les administrateurs globaux peuvent gérer l'ensemble des comptes utilisateurs.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran de la gestion des utilisateurs
+	\includegraphics[width=0.8\textwidth]{Images/users.png}
+	\caption{Gestion des Utilisateurs - Administration des comptes}
+	\label{fig:users-management}
+\end{figure}
+
+\textbf{Fonctionnalités d'administration :}
+\begin{itemize}
+	\item Création de nouveaux utilisateurs
+	\item Attribution des rôles (ADMIN\_G, ADMIN\_STORE, INVESTOR, CAISSIER)
+	\item Assignation de magasins aux responsables
+	\item Modification des permissions
+	\item Désactivation/Suppression de comptes
+	\item Réinitialisation de mots de passe
+\end{itemize}
+
+\subsection{Profil Utilisateur}
+
+Chaque utilisateur peut consulter et modifier ses informations personnelles.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran du profil utilisateur
+	\includegraphics[width=0.8\textwidth]{Images/profile.png}
+	\caption{Profil Utilisateur - Informations personnelles}
+	\label{fig:user-profile}
+\end{figure}
+
+\textbf{Informations modifiables :}
+\begin{itemize}
+	\item Nom et prénom
+	\item Email (vérification requise)
+	\item Téléphone
+	\item Adresse
+	\item Photo de profil
+	\item Changement de mot de passe
+	\item Préférences de notification
+\end{itemize}
+
+\section{Exports et Rapports}
+
+\subsection{Génération de Rapports PDF}
+
+Les utilisateurs peuvent générer des rapports PDF de leurs statistiques.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran du rapport PDF généré
+	\includegraphics[width=0.8\textwidth]{Images/ex.png}
+	\caption{Rapport PDF - Export professionnel}
+	\label{fig:pdf-report}
+\end{figure}
+
+\textbf{Contenu du rapport :}
+\begin{itemize}
+	\item En-tête avec logo et période
+	\item KPI principaux en tableau
+	\item Graphiques exportés en images
+	\item Tableaux de données détaillés
+	\item Pied de page avec date de génération
+	\item Mise en page professionnelle
+\end{itemize}
+
+\subsection{Export CSV}
+
+Les données brutes peuvent être exportées au format CSV pour analyse externe.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran du bouton d'export CSV
+	\includegraphics[width=0.8\textwidth]{Images/expo.png}
+	\caption{Export CSV - Données brutes pour tableur}
+	\label{fig:csv-export}
+\end{figure}
+
+\textbf{Données exportables :}
+\begin{itemize}
+	\item Liste complète des produits
+	\item Historique des commandes
+	\item Statistiques de vente par période
+	\item Inventaire avec niveaux de stock
+	\item Historique des enchères
+	\item Performance des investissements
+\end{itemize}
+
+\section{Messages d'Erreur et Notifications}
+
+\subsection{Gestion des Erreurs}
+
+L'application affiche des messages d'erreur clairs et exploitables.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran d'un message d'erreur
+	\includegraphics[width=0.8\textwidth]{Images/err.png}
+	\caption{Messages d'Erreur - Retour utilisateur explicite}
+	\label{fig:error-messages}
+\end{figure}
+
+\textbf{Types de messages :}
+\begin{itemize}
+	\item Erreurs de validation (champs manquants, formats invalides)
+	\item Erreurs de permissions (accès refusé)
+	\item Erreurs serveur (500, connexion perdue)
+	\item Avertissements (stock faible, date limite proche)
+	\item Succès (commande créée, bid placé)
+\end{itemize}
+
+\subsection{Système de Notifications}
+
+Les utilisateurs reçoivent des notifications pour les événements importants.
+
+\begin{figure}[H]
+	\centering
+	% TODO: Insérer la capture d'écran du système de notifications
+	\includegraphics[width=0.8\textwidth]{Images/not.png}
+	\caption{Système de Notifications - Alertes temps réel}
+	\label{fig:notifications}
+\end{figure}
+
+\textbf{Événements notifiés :}
+\begin{itemize}
+	\item Enchère surenchérie
+	\item Section remportée
+	\item Clôture d'enchère
+	\item Stock critique atteint
+	\item Nouvelle commande (pour admin)
+	\item Connexion réussie/échouée
+	\item Export terminé
+\end{itemize}
+
+\section{Conclusion du Chapitre}
+
+Ce chapitre a présenté de manière visuelle les principales interfaces de la plateforme Analify. Les captures d'écran illustrent concrètement :
+
+\begin{itemize}
+	\item La cohérence visuelle et l'ergonomie de l'application
+	\item L'adaptation des interfaces selon les rôles utilisateurs
+	\item La richesse fonctionnelle (analytics, bidding, assistant IA)
+	\item La qualité du design responsive (desktop et mobile)
+	\item L'attention portée à l'expérience utilisateur (UX)
+\end{itemize}
+
+L'ensemble de ces interfaces démontre la maturité du projet et sa capacité à répondre aux besoins métier identifiés dans les chapitres précédents. Le prochain chapitre conclura le rapport et proposera des perspectives d'évolution pour la plateforme.
