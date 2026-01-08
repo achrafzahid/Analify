@@ -1,0 +1,159 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{enumitem}
+\usepackage{longtable}
+
+\geometry{
+    a4paper,
+    left=1.5cm,
+    right=1.5cm,
+    top=1.5cm,
+    bottom=1.5cm
+}
+
+% Définition des couleurs
+\definecolor{headercolor}{RGB}{41, 128, 185}
+
+\begin{document}
+
+\pagestyle{empty}
+
+% En-tête
+\begin{center}
+    {\LARGE \textbf{Feuille de route : Projet JEE}}\\[0.3cm]
+    {\Large \textbf{Analify - Plateforme d'Analytique et de Bidding}}\\[0.5cm]
+    {\large Nom et Prénom : \textbf{Mohamed Amine EL ARBANI \& Achraf ZAHID}}\\[0.3cm]
+    {\large École Nationale des Sciences Appliquées de Khouribga}\\[0.2cm]
+    {\large Filière : Informatique et Ingénierie des Données}\\[0.2cm]
+    {\large Année universitaire : 2025-2026}
+\end{center}
+
+\vspace{0.3cm}
+
+\noindent
+\textit{Ce projet présente une plateforme complète d'analytique et de bidding pour la grande distribution, intégrant des technologies modernes (Spring Boot, React, Docker, IA) et une architecture 4 couches avec gestion fine des rôles utilisateurs.}
+
+\vspace{0.4cm}
+
+% Tableau principal
+\small
+\renewcommand{\arraystretch}{1.4}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{4.5cm}|>{\raggedright\arraybackslash}p{11cm}|}
+\hline
+\rowcolor{headercolor}
+\textcolor{white}{\textbf{Stratégie}} & \textcolor{white}{\textbf{Technologie}} \\
+\hline
+\endfirsthead
+
+\hline
+\rowcolor{headercolor}
+\textcolor{white}{\textbf{Stratégie}} & \textcolor{white}{\textbf{Technologie}} \\
+\hline
+\endhead
+
+\textbf{Frontend} & 
+\textbf{React 18} avec \textbf{TypeScript}
+\begin{itemize}[leftmargin=*, noitemsep, topsep=0pt]
+    \item \textbf{Vite} : Build tool et bundler
+    \item \textbf{Tailwind CSS} : Framework CSS utility-first
+    \item \textbf{shadcn/ui} : Composants UI modernes
+    \item \textbf{Bun} : Package manager rapide
+    \item \textbf{Axios} : Communication HTTP
+    \item \textbf{React Router} : Navigation SPA
+\end{itemize}
+\\
+\hline
+
+\textbf{Backend} & 
+\textbf{Java 21} avec \textbf{Spring Boot 3.4.13}
+\begin{itemize}[leftmargin=*, noitemsep, topsep=0pt]
+    \item \textbf{Spring Data JPA} : ORM et repositories
+    \item \textbf{Spring Security} : Sécurité et authentification
+    \item \textbf{Spring AI} : Intégration LLM (Ollama)
+    \item \textbf{Spring Validation} : Validation (@Valid)
+    \item \textbf{Lombok} : Réduction du code boilerplate
+    \item \textbf{MapStruct} : Mapping DTO ↔ Entités
+\end{itemize}
+\\
+\hline
+
+\textbf{Architecture} & 
+\textbf{4 couches} : Frontend (React) → Controller → Service → Repository
+\\
+\hline
+
+\textbf{Base de données} & 
+\textbf{PostgreSQL 16} : 18 tables normalisées, 1M+ lignes, indexation optimisée
+\\
+\hline
+
+\textbf{Sécurité} & 
+\textbf{JWT} : Authentification stateless, expiration 24h, BCrypt pour mots de passe
+\\
+\hline
+
+\textbf{Rôles utilisateurs} & 
+\textbf{ADMIN\_G} (global), \textbf{ADMIN\_STORE} (magasin), \textbf{INVESTOR} (bidding), \textbf{CAISSIER} (caisse)
+\\
+\hline
+
+\textbf{Intelligence Artificielle} & 
+\textbf{Ollama - LLaMA 3.2:3b}
+\begin{itemize}[leftmargin=*, noitemsep, topsep=0pt]
+    \item Contexte : 8192 tokens
+    \item GPU : NVIDIA RTX 4060 (8GB VRAM)
+    \item Assistant conversationnel en langage naturel
+    \item Historique : 5 derniers échanges
+\end{itemize}
+\\
+\hline
+
+\textbf{Conteneurisation} & 
+\textbf{Docker \& Docker Compose}
+\begin{itemize}[leftmargin=*, noitemsep, topsep=0pt]
+    \item Multi-stage builds optimisés
+    \item 4 services : backend, frontend, postgres, ollama
+    \item Health checks et volumes persistants
+\end{itemize}
+\\
+\hline
+
+\textbf{Build \& Déploiement} & 
+\textbf{Maven} (backend), \textbf{Nginx} (frontend production), \textbf{Git} (versioning)
+\\
+\hline
+
+\textbf{Tests} & 
+\textbf{Postman} : Tests API REST, validation endpoints et sécurité
+\\
+\hline
+
+\textbf{Traitement données} & 
+\textbf{Python3} avec Jupyter
+\begin{itemize}[leftmargin=*, noitemsep, topsep=0pt]
+    \item \textbf{Pandas} : Transformation CSV
+    \item \textbf{Faker} : Génération données synthétiques
+    \item \textbf{SQLAlchemy} : Injection PostgreSQL
+\end{itemize}
+\\
+\hline
+
+\end{longtable}
+
+\vspace{0.5cm}
+
+\noindent
+\textbf{Volumétrie :} 1 009 905 lignes de données réparties sur 18 tables (2000 utilisateurs, 1852 produits, 531 magasins, 9994 commandes, 983 572 entrées d'inventaire).
+
+\vspace{0.3cm}
+
+\noindent
+\textbf{Performances :} Déploiement Docker optimisé (backend 200 MB, frontend 25 MB), inférence LLM GPU à 50-100 tokens/s avec contexte de 8192 tokens.
+
+\end{document}
