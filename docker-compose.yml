@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: analify-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: analify_db
+      POSTGRES_USER: analify_user
+      POSTGRES_PASSWORD: analify_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analify_user -d analify_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - analify-network
+
+  # Ollama LLM Service
+  ollama:
+    image: ollama/ollama:latest
+    container_name: analify-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Uncomment for GPU support (requires nvidia-docker)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - analify-network
+
+  # Pull llama3.2:3b model (runs once)
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: analify-ollama-pull
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "Waiting for Ollama service..."
+        sleep 5
+        echo "Pulling llama3.2:3b model..."
+        ollama pull llama3.2:3b
+        echo "Model pulled successfully!"
+    networks:
+      - analify-network
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: ./backAnalify
+      dockerfile: Dockerfile
+    container_name: analify-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      # Database configuration
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/analify_db
+      SPRING_DATASOURCE_USERNAME: analify_user
+      SPRING_DATASOURCE_PASSWORD: analify_password
+      
+      # JPA/Hibernate
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "false"
+      
+      # Server configuration
+      SERVER_PORT: 8081
+      
+      # JWT Configuration
+      JWT_SECRET: YourSecureJWTSecretKeyChangeThisInProduction123456789
+      JWT_EXPIRATION: 86400000
+      
+      # Ollama AI Configuration
+      SPRING_AI_OLLAMA_BASE_URL: http://ollama:11434
+      SPRING_AI_OLLAMA_CHAT_MODEL: llama3.2:3b
+      SPRING_AI_OLLAMA_CHAT_OPTIONS_TEMPERATURE: 0.3
+      
+      # Java options
+      JAVA_OPTS: -Xmx512m -Xms256m
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    networks:
+      - analify-network
+
+  # React/Vite Frontend
+  frontend:
+    build:
+      context: ./frontAnalify
+      dockerfile: Dockerfile
+    container_name: analify-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    environment:
+      # API base URL (for nginx proxy, if enabled)
+      VITE_API_BASE_URL: http://localhost:8081/api
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - analify-network
+
+volumes:
+  postgres_data:
+    driver: local
+  ollama_data:
+    driver: local
+
+networks:
+  analify-network:
+    driver: bridge

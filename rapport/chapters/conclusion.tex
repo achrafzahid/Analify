@@ -1,0 +1,106 @@
+\chapter*{Conclusion et perspectives}
+\addcontentsline{toc}{chapter}{Conclusion et perspectives}
+
+Au terme de ce rapport, nous avons présenté \textbf{Analify}, une plateforme complète d'analytique métier et de bidding pour la grande distribution, couvrant à la fois la conception du backend Spring Boot, du frontend React/TypeScript, du module d'analytique, du module de bidding, des mécanismes de sécurité et de l'assistant analytique LLM.
+
+\section*{Bilan du projet}
+
+Analify atteint plusieurs objectifs majeurs :
+
+\begin{itemize}
+	\item \textbf{Centralisation de l'information} : les données issues de différents sous-domaines (ventes, stocks, sections, enchères) sont agrégées et présentées sous forme de tableaux de bord clairs, adaptés aux différents profils utilisateurs ;
+	\item \textbf{Architecture modulaire et maintenable} : le backend suit une architecture en couches (Controller, Service, Repository, Security, DTO), tandis que le frontend est organisé autour de pages, de layouts et de composants réutilisables ;
+	\item \textbf{Gestion fine des rôles} : quatre profils (ADMIN\_G, ADMIN\_STORE, INVESTOR, CAISSIER) bénéficient chacun d'un périmètre fonctionnel et de visibilité spécifique, implémenté à tous les niveaux ;
+	\item \textbf{Module de bidding innovant} : les sections de rayon deviennent des actifs monétisables, avec une logique d'enchères encadrée, offrant de nouvelles opportunités à la fois pour l'enseigne et pour les investisseurs ;
+	\item \textbf{Assistant analytique LLM} : l'intégration d'un modèle de langage permet d'interroger la plateforme en langage naturel et d'obtenir des réponses contextualisées, tout en respectant la sécurité des données ;
+	\item \textbf{Base technique moderne} : utilisation de technologies récentes (Java 21, Spring Boot 3.x, React 18, TypeScript, Vite, Tailwind CSS, Spring AI, Ollama).
+\end{itemize}
+
+Ce projet illustre l'intérêt de combiner des briques techniques robustes avec une réflexion métier aboutie pour produire un outil de pilotage pertinent.
+
+\section*{Points forts}
+
+Plusieurs aspects se distinguent particulièrement :
+
+\begin{itemize}
+	\item \textbf{Cohérence front/back} : les DTO exposés par le backend sont directement consommés par le frontend sous forme de types TypeScript, ce qui réduit les erreurs de mapping et facilite l'évolution ;
+	\item \textbf{Sécurité intégrée dès la conception} : l'usage des JWT, des filtres Spring Security et du filtrage par rôle côté service garantit une bonne isolation des données ;
+	\item \textbf{Separation of concerns} : l'encapsulation de l'assistant LLM dans un service dédié permet de changer de fournisseur ou de modèle sans réécrire la logique métier ;
+	\item \textbf{Expérience utilisateur moderne} : le dashboard, le module de bidding et l'assistant de chat offrent une interface fluide, supportée par Tailwind et shadcn/ui ;
+	\item \textbf{Alignement métier/technique} : la modélisation des domaines (produits, stocks, commandes, sections, bids) reste proche des problématiques réelles de la grande distribution.
+\end{itemize}
+
+\section*{Limites rencontrées}
+
+En dépit de ces points positifs, le projet présente certaines limites :
+
+\begin{itemize}
+	\item \textbf{Données simulées} : les données utilisées pour les tableaux de bord et le bidding sont générées ou simulées ; une intégration avec des systèmes de production (ERP, caisse) nécessiterait un travail supplémentaire ;
+	\item \textbf{Couverture de tests partielle} : bien que des tests unitaires et des validations manuelles existent, une couverture de tests plus large (tests end-to-end automatisés, tests de performance) serait souhaitable pour un déploiement en production ;
+	\item \textbf{LLM non spécialisé} : le modèle utilisé (par exemple \texttt{llama3.2} via Ollama) n'est pas spécifiquement entraîné sur des données de retail, ce qui peut limiter la précision de certaines analyses fines ;
+	\item \textbf{Scalabilité non éprouvée} : les choix techniques (Spring Boot, React, Postgres) sont scalables, mais l'application n'a pas été soumise à des tests de charge massifs.
+\end{itemize}
+
+Ces limites sont toutefois compatibles avec le cadre d'un projet académique ou de preuve de concept.
+
+\section*{Perspectives d'évolution}
+
+Plusieurs axes d'amélioration et d'extension peuvent être envisagés pour une version ultérieure d'Analify :
+
+\subsection*{Intégration de données réelles et ETL}
+
+\begin{itemize}
+	\item connecter Analify à des sources de données existantes (ERP, systèmes de caisse, outils de gestion de stock) via des processus ETL (Extract-Transform-Load) ;
+	\item mettre en place un mécanisme d'import/export automatique (par exemple, consommation de flux Kafka ou de fichiers CSV déposés régulièrement) ;
+	\item gérer la qualité des données (dédoublonnage, validation, enrichissement).
+\end{itemize}
+
+\subsection*{Analytique avancée et prévisionnelle}
+
+\begin{itemize}
+	\item ajouter des modèles de prévision de la demande (séries temporelles, modèles statistiques ou ML) ;
+	\item proposer des simulations d'impact d'une nouvelle enchère (\og si je prends cette section, quel impact potentiel sur mon CA ? \fg{}) ;
+	\item intégrer des indicateurs de performance plus avancés (panier moyen, fréquence d'achat, segmentation client).
+\end{itemize}
+
+\subsection*{Évolution du module de bidding}
+
+\begin{itemize}
+	\item enrichir les règles d'enchères (prix de réserve dynamique, enchères inversées, enchères en temps réel) ;
+	\item ajouter une visualisation plus riche des sections (plan de magasin, heatmap des emplacements) ;
+	\item gérer des contrats plus complexes (locations longues durées, partages de sections entre plusieurs investisseurs).
+\end{itemize}
+
+\subsection*{Renforcement de la sécurité et de la conformité}
+
+\begin{itemize}
+	\item implémenter des mécanismes de rafraîchissement des tokens, de gestion de sessions et de politiques de mot de passe avancées ;
+	\item intégrer des outils de monitoring et d'audit (logs structurés, tableaux de bord de sécurité) ;
+	\item se conformer à des normes sectorielles ou réglementaires spécifiques (si l'application manipulait des données personnelles sensibles).
+\end{itemize}
+
+\subsection*{Amélioration de l'assistant analytique}
+
+\begin{itemize}
+	\item expérimenter des modèles spécialisés (LLM entraînés sur des données de retail ou fine-tuning sur un corpus interne) ;
+	\item permettre des interactions multimodales (par exemple, générer des graphiques directement en réponse à une question) ;
+	\item introduire une mémoire de conversation persistante et des \og playbooks \fg{} d'analyses prêtes à l'emploi (scénarios prédéfinis : analyse hebdomadaire, bilan mensuel, etc.).
+\end{itemize}
+
+\section*{Conclusion générale}
+
+Analify démontre qu'il est possible, avec une stack technique moderne et des principes d'architecture clairs, de construire une plateforme :
+
+\begin{itemize}
+	\item robuste sur le plan backend (Spring Boot, Postgres, sécurité JWT) ;
+	\item agréable et efficace sur le plan frontend (React, TypeScript, Tailwind, shadcn/ui) ;
+	\item innovante sur le plan fonctionnel (bidding sur sections de rayon, assistant LLM) ;
+	\item extensible pour de futures évolutions (nouveaux rôles, nouveaux indicateurs, nouvelles sources de données).
+\end{itemize}
+
+Au-delà de l'exercice technique, ce projet met en lumière la valeur que peuvent apporter les outils d'analytique avancée et l'intelligence artificielle aux métiers de la grande distribution, en rendant les données plus \og parlantes \fg{} et plus facilement actionnables pour les décideurs.
+
+\vspace{1cm}
+\begin{center}
+  	extit{Ce travail ouvre ainsi la voie à de nombreuses pistes d'amélioration et d'industrialisation, que ce soit dans le cadre d'une évolution académique ou d'un projet réel en entreprise.}
+\end{center}

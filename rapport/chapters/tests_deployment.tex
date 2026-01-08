@@ -1,0 +1,297 @@
+\chapter{Tests, validation et déploiement}
+
+Ce chapitre présente les approches de tests et de validation mises en place pour garantir le bon fonctionnement d'Analify, ainsi que les stratégies de déploiement envisagées pour le backend et le frontend.
+
+\section{Stratégie globale de tests}
+
+L'objectif n'est pas de couvrir la totalité du code par des tests automatiques, mais de sécuriser les parties critiques :
+\begin{itemize}
+	\item logique métier des services (statistiques, bidding, assistant) ;
+	\item endpoints sensibles (authentification, gestion des rôles) ;
+	\item scénarios utilisateur principaux (connexion, consultation de dashboard, placement d'enchère, appel à l'assistant).
+\end{itemize}
+
+La stratégie se décline en plusieurs niveaux :
+
+\begin{description}
+	\item[Tests unitaires] ciblant les services métier Java (Spring Boot), avec des mocks pour les repositories ;
+	\item[Tests d'intégration] sur certains endpoints REST via MockMvc ou des clients HTTP ;
+	\item[Tests manuels] réalisés sur l'interface React (parcours de scénarios end-to-end) ;
+	\item[Validation technique] du câblage avec le LLM (vérification des prompts, des réponses, des erreurs).
+\end{description}
+
+\section{Tests unitaires du backend}
+
+Les tests unitaires sont principalement écrits avec \textbf{JUnit 5} et \textbf{Mockito}. Ils visent à vérifier :
+
+\begin{itemize}
+	\item les calculs de KPI dans \texttt{StatisticsService} (ex. : total de commandes, total de CA, filtrage par rôle) ;
+	\item la logique d'agrégation et de tri dans \texttt{EnhancedStatisticsService} (top produits, top magasins, etc.) ;
+	\item les règles métier du module de bidding dans \texttt{BiddingService} (section disponible ou non, bid gagnante, etc.) ;
+	\item la construction de résumés analytiques dans \texttt{AnalyticsAssistantService} (même si les appels LLM en tant que tels sont souvent mockés).
+\end{itemize}
+
+Un exemple typique de test unitaire sur le service de statistiques :
+
+\begin{lstlisting}[language=Java,caption={Exemple simplifié de test unitaire d'un service de statistiques},label={lst:unit-test-stats}]
+@ExtendWith(MockitoExtension.class)
+class StatisticsServiceTest {
+
+		@Mock
+		private OrderRepository orderRepository;
+
+		@InjectMocks
+		private StatisticsService statisticsService;
+
+		@Test
+		void shouldComputeTotalRevenueForAdminStore() {
+				Long userId = 1L;
+				UserRole role = UserRole.ADMIN_STORE;
+				StatisticsFilterDTO filter = new StatisticsFilterDTO(/* ... */);
+
+				// Mock du repository pour renvoyer des commandes factices
+				when(orderRepository.findByStoreIdAndDateBetween(/*...*/))
+						.thenReturn(List.of(/* commandes simulees */));
+
+				DashboardStatsDTO stats = statisticsService
+						.getDashboardStats(userId, role, filter);
+
+				assertEquals(/* valeur attendue */, stats.getTotalRevenue());
+		}
+}
+\end{lstlisting}
+
+Ces tests garantissent que les règles de filtrage et d'agrégation fonctionnent comme prévu pour différents rôles.
+
+\section{Tests d'intégration REST}
+
+Pour vérifier le bon câblage des contrôleurs, des filtres de sécurité et des services, des tests d'intégration peuvent être mis en place à l'aide de \textbf{Spring Boot Test} et \textbf{MockMvc}. Ils permettent de :
+
+\begin{itemize}
+	\item simuler des requêtes HTTP réelles (incluant l'en-tête Authorization avec un JWT) ;
+	\item vérifier les statuts de réponse (200, 401, 403, 404, etc.) ;
+	\item valider la structure des réponses JSON (présence de champs, types, etc.) ;
+	\item tester le comportement global (par exemple, un INVESTOR ne doit pas pouvoir appeler certains endpoints réservés aux ADMIN\_G).
+\end{itemize}
+
+Un test d'intégration typique peut envoyer une requête GET sur \texttt{/api/statistics/enhanced} avec un token INVESTOR et vérifier que la réponse ne contient que des sections appartenant à cet investisseur.
+
+\section{Tests et validation côté frontend}
+
+Le frontend ne dispose pas forcément d'une couverture de tests automatisés complète (Jest, React Testing Library), mais plusieurs types de validations ont été réalisés :
+
+\begin{itemize}
+	\item tests manuels des parcours principaux :
+	\begin{itemize}
+		\item connexion/déconnexion ;
+		\item navigation entre les pages du dashboard ;
+		\item application de filtres et rafraîchissement des statistiques ;
+		\item placement d'une enchère et vérification de sa prise en compte ;
+		\item interactions avec l'assistant LLM (question simple, cas d'erreur).
+	\end{itemize}
+	\item vérification de l'affichage sur différentes résolutions (desktop/laptop, tablette) ;
+	\item validation visuelle de la cohérence graphique (couleurs, typographie, alignements) grâce à Tailwind et shadcn/ui.
+\end{itemize}
+
+Des tests automatisés pourraient être ajoutés ultérieurement pour sécuriser les composants critiques (par exemple, le composant de login, le service API central, ou encore la logique de rendu du tableau de bord).
+
+\section{Validation de l'intégration LLM}
+
+L'intégration avec le LLM (Gemini puis Ollama) a fait l'objet de tests spécifiques :
+
+\begin{itemize}
+	\item tests avec des questions \og simples \fg{} pour vérifier la bonne propagation du rôle et du contexte analytique ;
+	\item observation des logs backend pour s'assurer que les prompts sont correctement construits et que les erreurs sont gérées ;
+	\item tests de charge légère (enchaîner plusieurs questions) pour vérifier la stabilité et la latence ;
+	\item vérification des scénarios d'erreur (serveur LLM indisponible, modèle manquant, etc.).
+\end{itemize}
+
+Ces validations ont permis d'ajuster la taille des résumés analytiques et de mettre en place des messages d'erreur clairs pour les utilisateurs.
+
+\section{Packaging et construction}
+
+Pour faciliter le déploiement et garantir la reproductibilité, Analify utilise deux approches complémentaires :
+
+\subsection{Packaging manuel}
+
+\subsubsection{Backend (Spring Boot)}
+
+Le backend est packagé sous forme de fichier JAR exécutable via Maven :
+\begin{itemize}
+	\item exécution de \texttt{./mvnw clean package -DskipTests} dans le dossier \texttt{backAnalify/}
+	\item génération d'un fichier \texttt{analify-0.0.1-SNAPSHOT.jar} dans le dossier \texttt{target/}
+	\item ce JAR contient toutes les dépendances nécessaires (fat JAR / uber JAR)
+	\item exécution via \texttt{java -jar target/analify-0.0.1-SNAPSHOT.jar}
+\end{itemize}
+
+\subsubsection{Frontend (React + Vite)}
+
+Le frontend est compilé en fichiers statiques optimisés :
+\begin{itemize}
+	\item exécution de \texttt{npm run build} ou \texttt{bun run build}
+	\item génération d'un dossier \texttt{dist/} contenant les assets minifiés (HTML, CSS, JS)
+	\item déploiement possible sur n'importe quel serveur web (Nginx, Apache, etc.)
+\end{itemize}
+
+\subsection{Déploiement Docker (approche recommandée)}
+
+Pour garantir la portabilité et simplifier le déploiement en production, Analify intègre une infrastructure Docker complète.
+
+\subsubsection{Architecture Docker}
+
+Le projet utilise \textbf{Docker Compose} pour orchestrer quatre services principaux :
+
+\begin{itemize}
+	\item \textbf{PostgreSQL} : base de données avec persistance des données via un volume Docker
+	\item \textbf{Backend Spring Boot} : API REST construite via multi-stage build (Maven + JRE)
+	\item \textbf{Frontend React} : application SPA servie par Nginx
+	\item \textbf{Ollama} : service LLM local pour l'assistant analytique
+\end{itemize}
+
+\subsubsection{Multi-stage builds}
+
+Les Dockerfiles utilisent une approche multi-stage pour optimiser la taille des images :
+
+\textbf{Backend} :
+\begin{itemize}
+	\item Stage 1 (build) : Maven + JDK 21 pour compiler le code source
+	\item Stage 2 (runtime) : JRE 21 Alpine pour exécuter uniquement le JAR
+	\item Résultat : image finale légère (~200MB au lieu de ~700MB)
+\end{itemize}
+
+\textbf{Frontend} :
+\begin{itemize}
+	\item Stage 1 (build) : Node.js + Bun pour construire l'application
+	\item Stage 2 (production) : Nginx Alpine pour servir les fichiers statiques
+	\item Résultat : image finale minimaliste (~25MB)
+\end{itemize}
+
+\subsubsection{Orchestration et dépendances}
+
+Docker Compose gère automatiquement :
+\begin{itemize}
+	\item l'ordre de démarrage des services (health checks)
+	\item le réseau interne isolé entre les conteneurs
+	\item la persistance des données (volumes pour PostgreSQL et Ollama)
+	\item le téléchargement automatique du modèle LLM au premier démarrage
+	\item les variables d'environnement pour la configuration
+\end{itemize}
+
+\subsubsection{Déploiement simplifié}
+
+Le déploiement complet se fait en une seule commande :
+
+\begin{lstlisting}[language=bash,caption={Déploiement Docker complet},label={lst:docker-deploy}]
+docker-compose up -d
+\end{lstlisting}
+
+Cette commande :
+\begin{itemize}
+	\item construit les images Docker pour le backend et le frontend
+	\item télécharge les images PostgreSQL et Ollama
+	\item crée le réseau et les volumes nécessaires
+	\item démarre tous les services en arrière-plan
+	\item expose les ports appropriés (80 pour le frontend, 8081 pour le backend)
+\end{itemize}
+
+\subsubsection{Avantages du déploiement Docker}
+
+\begin{itemize}
+	\item \textbf{Portabilité} : fonctionne sur n'importe quel système avec Docker (Linux, Windows, macOS)
+	\item \textbf{Reproductibilité} : environnement identique en développement et production
+	\item \textbf{Isolation} : chaque service s'exécute dans son propre conteneur
+	\item \textbf{Scalabilité} : possibilité de scaler horizontalement avec Docker Swarm ou Kubernetes
+	\item \textbf{Maintenance facilitée} : mises à jour et rollbacks simplifiés
+	\item \textbf{Sécurité} : conteneurs isolés avec utilisateurs non-root
+\end{itemize}
+
+\subsection{Configuration pour la production}
+
+Pour un déploiement en production, plusieurs ajustements sont recommandés :
+
+\begin{itemize}
+	\item utiliser des secrets Docker pour les mots de passe (au lieu de variables d'environnement)
+	\item configurer un reverse proxy avec SSL/TLS (Traefik ou Nginx)
+	\item activer les health checks pour tous les services
+	\item définir des limites de ressources (CPU, mémoire)
+	\item mettre en place une stratégie de backup automatisée pour PostgreSQL
+	\item configurer le logging centralisé (ELK stack ou Loki)
+	\item activer le support GPU pour Ollama si disponible
+\end{itemize}
+
+\section{Déploiement du backend (approche manuelle)}
+
+Lorsque Docker n'est pas utilisé, le backend Spring Boot peut être déployé manuellement :
+
+\begin{enumerate}
+	\item Compilation et packaging :
+	\begin{itemize}
+		\item exécution de \texttt{./mvnw clean package -DskipTests} dans le dossier \texttt{backAnalify/} ;
+		\item génération d'un JAR (par exemple \texttt{analify-0.0.1-SNAPSHOT.jar}) dans le dossier \texttt{target/}.
+	\end{itemize}
+	\item Configuration de l'environnement :
+	\begin{itemize}
+		\item définition des variables d'environnement pour la base de données (URL, utilisateur, mot de passe) ;
+		\item définition du port (par exemple \texttt{SERVER\_PORT=8081}) ;
+		\item configuration de la clé secrète JWT ;
+		\item configuration de Spring AI/Ollama si l'assistant LLM est activé en production.
+	\end{itemize}
+	\item Exécution :
+	\begin{itemize}
+		\item lancement du JAR via \texttt{java -jar analify-0.0.1-SNAPSHOT.jar} ;
+		\item vérification des logs de démarrage pour s'assurer que la connexion à Postgres fonctionne et que les migrations JPA sont correctes.
+	\end{itemize}
+\end{enumerate}
+
+\section{Déploiement du frontend (approche manuelle)}
+
+Lorsque Docker n'est pas utilisé, le frontend React est compilé en \textbf{bundle statique} via Vite :
+
+\begin{enumerate}
+	\item Installation des dépendances : exécution de \texttt{npm install} ou \texttt{bun install} dans le dossier \texttt{frontAnalify/} ;
+	\item Build de production : exécution de \texttt{npm run build} (ou équivalent), qui génère un dossier \texttt{dist/} contenant les fichiers statiques optimisés (HTML, JS, CSS, assets) ;
+	\item Déploiement :
+	\begin{itemize}
+		\item copie du contenu de \texttt{dist/} sur un serveur web (Nginx, Apache, ou serveur de fichiers statiques) ;
+		\item configuration du serveur pour rediriger toutes les routes vers \texttt{index.html} (car il s'agit d'une SPA).
+	\end{itemize}
+\end{enumerate}
+
+En environnement de développement, l'application est lancée en mode \texttt{npm run dev} (Vite), typiquement sur le port 5173, et le backend sur le port 8081. Le CORS est configuré côté backend pour autoriser ces appels cross-origin.
+
+\section{Enchaînement complet}
+
+Pour exécuter l'ensemble de la plateforme, deux approches sont possibles :
+
+\subsection{Avec Docker (recommandé)}
+
+Une seule commande suffit pour démarrer tous les services :
+
+\begin{lstlisting}[language=bash,caption={Démarrage complet avec Docker}]
+docker-compose up -d
+\end{lstlisting}
+
+Docker Compose se charge automatiquement de :
+\begin{itemize}
+	\item démarrer PostgreSQL et créer la base de données
+	\item télécharger le modèle Ollama (llama3.2:3b)
+	\item démarrer le backend Spring Boot
+	\item démarrer le frontend avec Nginx
+	\item configurer le réseau et les volumes
+\end{itemize}
+
+L'application est ensuite accessible sur \texttt{http://localhost}.
+
+\subsection{Approche manuelle (développement)}
+
+Pour exécuter l'ensemble de la plateforme en local sans Docker :
+
+\begin{enumerate}
+	\item Démarrer la base de données PostgreSQL et s'assurer que le schéma est accessible (tables créées automatiquement par JPA ou via scripts) ;
+	\item Démarrer le serveur Ollama et s'assurer que le modèle choisi (par ex. \texttt{llama3.2:3b}) est bien installé ;
+	\item Démarrer le backend Spring Boot (Maven ou JAR) sur le port 8081 ;
+	\item Démarrer le frontend en mode développement (Vite) sur le port 5173, ou déployer le build de production ;
+	\item Accéder à l'application via un navigateur (URL du frontend) et parcourir les principaux scénarios (connexion, dashboard, bidding, assistant LLM).
+\end{enumerate}
+
+Ce processus permet de valider rapidement l'ensemble du système après chaque modification significative du code.

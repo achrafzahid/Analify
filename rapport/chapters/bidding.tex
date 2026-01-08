@@ -1,0 +1,162 @@
+\chapter{Module de bidding (enchères sur sections)}
+
+Le module de \textbf{bidding} constitue l'une des spécificités majeures d'Analify. Il permet de transformer les sections de rayon en actifs monétisables sur lesquels les investisseurs peuvent enchérir, en se basant sur les performances historiques et le potentiel de vente.
+
+Ce chapitre détaille :
+\begin{itemize}
+	\item le modèle de domaine du bidding (catégories, rangs, faces, sections, bids) ;
+	\item la logique métier côté backend (services et règles d'enchères) ;
+	\item les endpoints REST d'exposition ;
+	\item l'interface utilisateur côté frontend ;
+	\item les liens avec le module d'analytique.
+\end{itemize}
+
+\section{Modèle de domaine du bidding}
+
+Le bidding repose sur une hiérarchie spatiale qui reflète la structure des rayons physiques en magasin :
+\begin{description}
+	\item[Catégorie] : famille de produits (ex. : boissons, produits frais, hygiène, etc.) ;
+	\item[Rang] : un \og rang \fg{} ou \og allée \fg{} dans un rayon ;
+	\item[Face] : une face de rayon visible (avant d'un linéaire) ;
+	\item[Section] : portion précise d'une face, louable indépendamment ;
+	\item[Bid] : enchère placée par un investisseur pour occuper une section sur une période donnée.
+\end{description}
+
+Les entités principales sont donc :
+\begin{itemize}
+	\item \textbf{Category} : identifiée par un nom et éventuellement des métadonnées (couleur, code, etc.) ;
+	\item \textbf{Section} : identifiée par un code unique, associée à une catégorie, un magasin et une face ;
+	\item \textbf{Bid} : contient l'investisseur, la section, le montant, la date de début/fin, le statut ;
+	\item éventuellement des entités intermédiaires pour les rangs et faces, selon le niveau de détail retenu.
+\end{itemize}
+
+Un schéma simplifié peut être représenté comme suit :
+
+\begin{figure}[h]
+	\centering
+	\fbox{\parbox{0.9\textwidth}{\centering \textit{(Diagramme simplifié : Category \textrightarrow{} Section \textrightarrow{} Bid, avec lien vers Store et Investor)}}}
+	\caption{Vue simplifiée du modèle de domaine du bidding}
+\end{figure}
+
+Chaque section possède des attributs descriptifs (surface, emplacement, visibilité, etc.) et des indicateurs issus du module d'analytique (CA généré, trafic estimé), qui aident les investisseurs à évaluer l'intérêt de placer une enchère.
+
+\section{Logique métier des enchères}
+
+Le service \texttt{BiddingService} encapsule la logique métier du module, notamment :
+\begin{itemize}
+	\item la liste des sections disponibles pour un investisseur donné ;
+	\item les règles de création d'une nouvelle bid ;
+	\item la détermination des bids gagnantes ;
+	\item la mise à jour des statuts des sections et des enchères (ouverte, en cours, gagnée, expirée, annulée, etc.).
+\end{itemize}
+
+Quelques règles métier typiques :
+\begin{itemize}
+	\item une section ne peut être \textbf{occupée que par un seul investisseur} à un instant donné ;
+	\item plusieurs bids peuvent exister sur une section tant que la période d'enchère est ouverte, mais seule la bid au montant maximal (et respectant certaines conditions) sera déclarée gagnante ;
+	\item un investisseur ne peut pas placer plusieurs bids concurrentes sur la même section pour la même période ;
+	\item certaines sections peuvent être réservées à certains types d'investisseurs ou à des partenaires privilégiés.
+\end{itemize}
+
+Le service travaille en étroite collaboration avec le module d'analytique pour obtenir des indicateurs liés aux sections (CA historique, taux de rotation, etc.) et éventuellement influencer les prix de réserve ou les recommandations.
+
+\section{Endpoints REST du module de bidding}
+
+Le \texttt{BiddingController} expose les principales opérations sous forme d'API REST, par exemple :
+
+\begin{itemize}
+	\item \texttt{GET /api/bidding/categories} : liste toutes les catégories disponibles ;
+	\item \texttt{GET /api/bidding/sections} : liste les sections, filtrées par rôle/utilisateur et éventuellement par catégorie, magasin, statut ;
+	\item \texttt{GET /api/bidding/sections/\{id\}} : détail d'une section et de ses bids associées ;
+	\item \texttt{POST /api/bidding/bids} : créer une nouvelle bid (corps JSON contenant l'ID de la section, le montant, la période) ;
+	\item \texttt{GET /api/bidding/bids/mine} : lister les bids d'un investisseur ;
+	\item \texttt{POST /api/bidding/sections/\{id\}/close} : clôturer les bids d'une section (par un administrateur, par exemple) et déclarer un gagnant.
+\end{itemize}
+
+Comme pour les autres modules, le filtre JWT enrichit les requêtes avec \texttt{userId} et \texttt{role}, ce qui permet au service :
+\begin{itemize}
+	\item de retourner uniquement les sections et bids autorisées pour un investisseur donné ;
+	\item de distinguer les capacités d'un ADMIN\_G / ADMIN\_STORE (vision globale, possibilité de fermer une enchère) de celles d'un INVESTOR (vision limitée à ses propres bids) ;
+	\item de restreindre fortement l'accès pour les caissiers, qui n'ont pas vocation à gérer les enchères.
+\end{itemize}
+
+\section{Interface utilisateur du bidding côté frontend}
+
+La page \texttt{BiddingDashboard.tsx} (ou similaire) fournit une vision dédiée au module de bidding. Elle peut être structurée comme suit :
+
+\subsection{Navigation hiérarchique}
+
+Un explorateur latéral ou des menus déroulants permettent de filtrer :
+\begin{itemize}
+	\item par catégorie de produit ;
+	\item par magasin ;
+	\item par rang ou face (si ces concepts sont modélisés explicitement dans l'interface).
+\end{itemize}
+
+Les sections correspondantes sont alors affichées sous forme de cartes ou de lignes de tableau, avec :
+\begin{itemize}
+	\item leur nom/code ;
+	\item leur statut (disponible, en enchère, occupée) ;
+	\item des indicateurs clés (CA généré, nombre de produits, visibilité estimée) ;
+	\item les bids actuelles (pour les administrateurs) ou la bid de l'investisseur connecté.
+\end{itemize}
+
+\subsection{Formulaire de placement d'enchère}
+
+Lorsqu'un investisseur souhaite placer une enchère sur une section :
+\begin{enumerate}
+	\item Il sélectionne la section souhaitée ;
+	\item Un formulaire s'affiche (modale ou panneau latéral) où il renseigne le montant de l'enchère et éventuellement la période souhaitée ;
+	\item Le frontend envoie une requête POST vers \texttt{/api/bidding/bids} avec les informations saisies ;
+	\item En cas de succès, un message de confirmation est affiché (toast) et la liste des bids est rafraîchie ;
+	\item En cas d'erreur (section déjà occupée, montant insuffisant, etc.), un message explicite est renvoyé par le backend et affiché à l'utilisateur.
+\end{enumerate}
+
+\subsection{Suivi des bids et indicateurs}
+
+L'investisseur dispose également d'une vue récapitulative de ses enchères :
+\begin{itemize}
+	\item liste de ses bids avec statut (en cours, gagnée, perdue, expirée) ;
+	\item montant et date de chacune ;
+	\item informations sur la section correspondante ;
+	\item éventuellement des graphiques montrant l'évolution de ses montants investis dans le temps.
+\end{itemize}
+
+Cette vue est alimentée par l'endpoint \texttt{/api/bidding/bids/mine} et s'appuie sur des composants de tableau et de graphiques similaires à ceux utilisés pour les statistiques.
+
+\section{Lien entre bidding et analytique}
+
+Le module de bidding est intimement lié au module d'analytique :
+\begin{itemize}
+	\item Les indicateurs de performance des sections (CA, marge, taux de rotation) sont indispensables pour que les investisseurs puissent évaluer la pertinence d'une section avant d'enchérir ;
+	\item Les administrateurs peuvent utiliser les tableaux de bord pour identifier les sections sous-exploitées et décider de les proposer en bidding ;
+	\item Les résultats des bids (sections gagnées, montants investis) alimentent à leur tour les tableaux de bord (par exemple, top sections par revenu généré via bidding).
+\end{itemize}
+
+Dans l'autre sens, les décisions de bidding ont un impact sur les ventes et, donc, sur les indicateurs analytiques. Analify permet de boucler cette boucle de rétroaction :
+\begin{enumerate}
+	\item Un investisseur place une enchère et obtient une section ;
+	\item Ses produits sont mieux mis en valeur, ce qui (idéalement) augmente les ventes ;
+	\item Les tableaux de bord montrent l'amélioration des performances pour cette section et ces produits ;
+	\item L'investisseur et l'enseigne peuvent ajuster leur stratégie de bidding en conséquence.
+\end{enumerate}
+
+\section{Intégration avec l'assistant analytique LLM}
+
+Le module de bidding est également pris en compte par l'assistant LLM. Quelques exemples de questions possibles :
+\begin{itemize}
+	\item \og Quelles sont mes sections les plus rentables ce trimestre ? \fg{}
+	\item \og Sur quelles catégories devrais-je concentrer mes prochaines enchères ? \fg{}
+	\item \og Quels magasins ont le plus de sections inoccupées ? \fg{}
+\end{itemize}
+
+Côté backend, \texttt{AnalyticsAssistantService} inclut dans son résumé analytique :
+\begin{itemize}
+	\item des informations sur les sections et bids de l'investisseur connecté ;
+	\item des statistiques agrégées sur les sections (taux d'occupation, performance moyenne) ;
+	\item des indicateurs par catégorie.
+\end{itemize}
+
+Le LLM peut alors formuler des recommandations qualitatives, tout en restant limité aux données que les services de bidding et d'analytique lui ont résumées.
+
+Ainsi conçu, le module de bidding transforme le rayon en un véritable \og marché d'espaces \fg{}, piloté par les données et accessible via une interface moderne et un assistant intelligent.

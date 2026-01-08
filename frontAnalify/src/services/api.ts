@@ -329,6 +329,17 @@ export const statsApi = {
     apiRequest(API_URLS.DEEP_SEARCH, 'POST', { query }),
 };
 
+// Analytics Assistant API
+export interface AssistantResponse {
+  answer: string;
+  metadata?: Record<string, unknown>;
+}
+
+export const assistantApi = {
+  askQuestion: (question: string) =>
+    apiRequest<AssistantResponse>(`${API_BASE_URL}/assistant/analytics/query`, 'POST', { question }),
+};
+
 // Bidding API
 export const biddingApi = {
   // Navigation

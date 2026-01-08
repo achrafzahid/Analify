@@ -1,0 +1,271 @@
+% Rapport de projet Analify
+% Auteur : [Votre nom]
+% Date : \today
+
+\documentclass[12pt,a4paper]{report}
+
+% Encodage et langue
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+% Remarque : le support complet du français via babel nécessite le paquet texlive-lang-french.
+% Pour assurer une compilation portable même sans ce paquet, on utilise ici l'anglais.
+\usepackage[english]{babel}
+
+% Mise en page
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{setspace}
+\onehalfspacing
+
+% Figures, couleurs, liens
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{
+	colorlinks=true,
+	linkcolor=blue,
+	urlcolor=blue,
+	citecolor=blue
+}
+
+% Bibliographie
+\usepackage[style=numeric,sorting=none]{biblatex}
+\addbibresource{references.bib}
+
+% Listings de code
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{red!70!black},
+  numberstyle=\tiny\color{gray},
+  numbers=left,
+  stepnumber=1,
+  numbersep=5pt,
+  showstringspaces=false,
+  breaklines=true,
+  frame=single,
+  tabsize=2,
+  language=Java
+}
+
+% Pour un titre de table des matières en français
+\renewcommand{\contentsname}{Table des matières}
+
+% Guillemets français (sans babel[french])
+\newcommand{\og}{«\,}
+\newcommand{\fg}{\,»}
+
+\title{\textbf{Conception et Implémentation d'une Plateforme d'Analytique et de Bidding pour la Grande Distribution}\\[0.5cm]
+\large Projet Analify}
+
+\author{Ash [Nom de famille]}
+
+\date{\today}
+
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    
+    % --- Logo ---
+    % Assurez-vous d'avoir le fichier logo_ensa.png dans votre dossier
+   \begin{center}
+        \includegraphics[width=0.3\textwidth]{Images/ensakhouribgalogo.png}
+    \end{center}
+    \vspace{1.5cm}
+    
+    % --- Université et École ---
+    {\Large \textbf{ENSA KHOURIBGA}} \\
+    \vspace{0.5cm}
+    {\large INFORMATIQUE ET INGÉNIERIE DES DONNÉES} \\
+    \vspace{3cm}
+    
+    % --- Titre encadré ---
+    \makebox[\textwidth]{\rule{\textwidth}{1pt}} \\
+    \vspace{0.4cm}
+    {\Huge \textbf{Conception et Implémentation d'une Plateforme d'Analytique et de Bidding pour la Grande Distribution}} \\
+    \vspace{0.4cm}
+    \makebox[\textwidth]{\rule{\textwidth}{1pt}} \\
+    \vspace{4cm}
+    
+    % --- Auteurs et Encadrant ---
+    \begin{minipage}{0.45\textwidth}
+        \begin{flushleft} \large
+            \emph{Réalisé par :}\\
+            \textbf{Achraf ZAHID}\\
+            \textbf{Med Amine EL ARBANI}\\
+        \end{flushleft}
+    \end{minipage}
+    \begin{minipage}{0.45\textwidth}
+        \begin{flushright} \large
+            \emph{Encadré par :}\\
+            \textbf{M. GHERRABI}
+        \end{flushright}
+    \end{minipage}
+    
+    \vfill
+    
+    % --- Date ---
+    {\large 08 Janvier 2026}
+    
+\end{titlepage}
+
+\tableofcontents
+
+\chapter*{Introduction Générale}
+\addcontentsline{toc}{chapter}{Introduction Générale}
+
+Dans le contexte actuel de la grande distribution et du retail, les entreprises disposent d'un volume de données considérable (ventes, stocks, commandes, performance des employés, etc.) mais peinent souvent à les exploiter de façon simple et centralisée. Le projet \textbf{Analify} vise à répondre à ce besoin en proposant une plateforme complète d'analytique métier et de gestion de bidding pour les espaces de rayon, tout en intégrant un assistant intelligent basé sur un LLM (Large Language Model) capable de répondre à des questions métier en langage naturel.\\
+
+Ce rapport présente de manière détaillée la conception, l'architecture et l'implémentation d'Analify, depuis le \textbf{backend Spring Boot} (Java 21, Spring Boot 3.4.13, PostgreSQL, JWT, Spring Security, Spring AI, etc.) jusqu'au \textbf{frontend React/TypeScript} (Vite, Tailwind CSS, shadcn/ui), en passant par la couche d'analytique métier, le module de bidding, la gestion fine des rôles (ADMIN\_G, ADMIN\_STORE, INVESTOR, CAISSIER) et l'intégration d'un assistant analytique via LLM (Google Gemini puis modèle local via Ollama).\\
+
+L'objectif de ce document est de fournir un \textbf{rapport complet (niveau mémoire de fin d'études)} couvrant :
+\begin{itemize}
+	\item le contexte et les objectifs fonctionnels du projet ;
+	\item l'analyse des besoins et la modélisation des données ;
+	\item l'architecture logique et technique (front/back) ;
+	\item le détail des principaux modules : statistiques, bidding, gestion des stocks, commandes ;
+	\item la gestion de la sécurité et des rôles utilisateurs ;
+	\item la conception et l'intégration de l'assistant analytique LLM ;
+	\item les choix technologiques, les tests et la mise en production ;
+	\item une conclusion et des perspectives d'évolution.
+\end{itemize}
+
+Chaque grande idée fonctionnelle ou technique est structurée sous forme de \textbf{chapitre}, afin de rendre la lecture claire et progressive. Le rapport est enrichi de \textbf{captures d'écran}, de schémas et d'\textbf{extraits de code} commentés, permettant de comprendre précisément le fonctionnement d'Analify de bout en bout.\\
+
+\chapter{Contexte, objectifs et périmètre du projet}
+
+\section{Contexte métier}
+
+La grande distribution moderne repose sur une gestion fine des stocks, des commandes, des promotions et de la mise en valeur des produits dans les rayons. Les enseignes disposent de multiples systèmes (ERP, caisses, outils de gestion de stock, etc.) qui produisent des \og silos de données \fg{}. Cependant, les décideurs (direction, responsables de magasin, investisseurs) ont besoin d'une vision consolidée et de tableaux de bord pertinents pour piloter l'activité.\\
+
+Par ailleurs, la monétisation des espaces de rayon et des sections via un mécanisme de \textit{bidding} (enchères) par les investisseurs devient un levier important : les marques et investisseurs peuvent ainsi louer des emplacements à fort potentiel en fonction des performances historiques (ventes, trafic, marge, etc.).\\
+
+Dans ce contexte, Analify propose :
+\begin{itemize}
+	\item une couche d'analytique avancée (KPI, graphiques, tableaux, exports CSV/PDF) ;
+	\item un module de bidding structuré par catégories, rangs, faces et sections ;
+	\item un assistant LLM capable de répondre à des questions du type \og Quels sont mes produits les plus rentables ce mois-ci ? \fg{} ou \og Quels magasins ont le plus de ruptures de stock ? \fg{} ;
+	\item une gestion des rôles fine, garantissant que chaque profil ne voit que son périmètre (administration globale, magasin, investisseur, caissier).
+\end{itemize}
+
+\section{Objectifs généraux}
+
+Les objectifs principaux du projet sont les suivants :
+\begin{itemize}
+	\item Centraliser les indicateurs clés de performance (KPI) sur une \textbf{interface web unique}.
+	\item Offrir une \textbf{expérience utilisateur moderne} (dashboard réactif, filtres dynamiques, visualisation des données).
+	\item Proposer un \textbf{moteur de bidding} pour la réservation de sections de rayons par les investisseurs.
+	\item Intégrer un \textbf{assistant analytique LLM} qui exploite les données déjà agrégées, sans accès direct à la base.
+	\item Garantir la \textbf{sécurité des données} via une authentification JWT et une gestion stricte des rôles.
+\end{itemize}
+
+\section{Périmètre fonctionnel}
+
+Le périmètre fonctionnel couvert par ce rapport inclut :
+\begin{itemize}
+	\item la gestion des utilisateurs et des rôles ;
+	\item les tableaux de bord statistiques (basique et avancé) ;
+	\item la gestion des produits, des stocks et des alertes de rupture ;
+	\item le module de commandes et d'ordres de vente ;
+	\item le module de bidding (catégories, rangs, faces, sections, enchères, suivi des bids) ;
+	\item l'assistant analytique LLM (backend Spring AI + modèle local Ollama, frontend chat panel) ;
+	\item les exports CSV et PDF ;
+	\item le déploiement de l'application (backend + frontend).
+\end{itemize}
+
+\chapter{Architecture globale du système Analify}
+
+\section{Vue d'ensemble front/back}
+
+Analify est structuré en deux sous-projets principaux :
+\begin{itemize}
+	\item \textbf{backAnalify} : backend \textit{REST} basé sur Spring Boot 3.4.13, Java 21 et PostgreSQL ;
+	\item \textbf{frontAnalify} : frontend SPA basé sur React 18, TypeScript, Vite, Tailwind CSS et les composants \texttt{shadcn/ui}.
+\end{itemize}
+
+La communication entre les deux se fait exclusivement via des \textbf{API REST JSON} sécurisées par des tokens JWT. Le schéma de déploiement typique est le suivant :
+
+\begin{figure}[h]
+	\centering
+	% \includegraphics[width=0.9\textwidth]{images/architecture-globale.png}
+	\fbox{\parbox{0.9\textwidth}{\centering \textit{(Capture d'écran / schéma de l'architecture globale à insérer ici)}}}
+	\caption{Architecture globale front/back de la plateforme Analify}
+	\label{fig:archi-globale}
+\end{figure}
+
+Le backend expose des endpoints regroupés par \textbf{domaines métier} (authentification, statistiques, produits, commandes, bidding, assistant analytique, etc.) et le frontend consomme ces endpoints via un service centralisé \texttt{api.ts}.
+
+\section{Découpage en couches}
+
+La logique côté backend suit une architecture en couches classique :
+\begin{itemize}
+	\item \textbf{Controller} : gestion des endpoints REST, validation des données d'entrée, mapping des DTO ;
+	\item \textbf{Service} : logique métier (calculs de KPI, règles de bidding, filtrage par rôle, etc.) ;
+	\item \textbf{Repository} : accès aux données (Spring Data JPA, requêtes personnalisées) ;
+	\item \textbf{Entity/DTO/Mapper} : mapping entre entités JPA et objets de transfert (DTO) ;
+	\item \textbf{Security} : JWT, filtres, configuration des rôles et des autorisations ;
+	\item \textbf{Integration LLM} : service dédié à l'assistant analytique (Spring AI + Ollama/Gemini).
+\end{itemize}
+
+Du côté frontend, on distingue :
+\begin{itemize}
+	\item une \textbf{couche de routing} (pages \texttt{Landing}, \texttt{Login}, \texttt{Dashboard}, etc.) ;
+	\item des \textbf{layouts} (par ex. \texttt{DashboardLayout.tsx}) pour organiser la structure générale (sidebar, header, contenu, assistant) ;
+	\item des \textbf{composants métiers} (\texttt{EnhancedStatistics.tsx}, \texttt{Products.tsx}, \texttt{BiddingDashboard.tsx}, etc.) ;
+	\item des \textbf{composants UI réutilisables} (\texttt{StatCard}, \texttt{DataTable}, \texttt{FilterPanel}, etc.) ;
+	\item un contexte d'authentification (\texttt{AuthContext.tsx}) ;
+	\item un service d'accès API centralisé (\texttt{services/api.ts}).
+\end{itemize}
+
+\section{Gestion des rôles et encapsulation des données}
+
+Un point clé de l'architecture est la \textbf{gestion stricte des rôles} :
+\begin{itemize}
+	\item \textbf{ADMIN\_G} : vision globale sur l'ensemble des magasins, des produits, des stocks et des performances ;
+	\item \textbf{ADMIN\_STORE} : vision limitée à son magasin (stocks, ventes, caissiers, sections) ;
+	\item \textbf{INVESTOR} : vision limitée à ses propres produits et sections gagnées dans le système de bidding ;
+	\item \textbf{CAISSIER} : vision très restreinte, principalement orientée \og caisse et commandes \fg{}.
+\end{itemize}
+
+Cette encapsulation se retrouve dans \textbf{tous} les services de statistiques et dans l'assistant LLM : les méthodes reçoivent systématiquement l'identifiant de l'utilisateur et son rôle, puis appliquent les filtres adéquats.\\
+
+Par exemple, côté backend, les services de statistiques exposent des signatures du type :
+
+\begin{lstlisting}[language=Java,caption={Exemple de signature de service statistique filtré par rôle},label={lst:stats-service-signature}]
+public EnhancedDashboardDTO getEnhancedDashboard(Long userId,
+												UserRole role,
+												StatisticsFilterDTO filter) {
+	// Logique : filtre des donnees en fonction du role
+}
+\end{lstlisting}
+
+Cette approche garantit que même si le frontend tentait d'appeler un endpoint avec un rôle inapproprié, le backend ne renverrait jamais des données hors périmètre.\\
+
+% ---------------------------------------------------------------------------
+% À PARTIR D'ICI :
+% Ajouter de nombreux chapitres détaillés (backend, frontend, LLM, bidding,
+% sécurité, tests, déploiement, etc.). Chaque chapitre peut faire plusieurs
+% pages, avec figures, listings et explications détaillées. En compilant
+% avec les captures d'écran et les schémas, le rapport dépassera largement
+% les 60 pages demandées.
+% ---------------------------------------------------------------------------
+
+% Chapitres détaillés externalisés dans le dossier chapters/
+\input{chapters/backend}
+\input{chapters/frontend}
+\input{chapters/analytics}
+\input{chapters/bidding}
+\input{chapters/security}
+\input{chapters/llm_assistant}
+\input{chapters/tests_deployment}
+\input{chapters/conclusion}
+
+% Bibliographie
+\printbibliography[heading=bibintoc,title={Bibliographie}]
+
+\end{document}
+

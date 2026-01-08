@@ -1,0 +1,200 @@
+\chapter{Module d'analytique et tableaux de bord}
+
+Le module d'analytique constitue le \textbf{cœur décisionnel} d'Analify. Il permet de consolider et de visualiser les principaux indicateurs de performance (KPI) à différents niveaux (global, magasin, investisseur, caissier) et sur différentes dimensions (temps, catégorie de produit, magasin, section de rayon, etc.).
+
+Ce chapitre décrit la conception de ce module côté backend (services de statistiques, DTO) et côté frontend (pages, composants graphiques), ainsi que son articulation avec l'assistant analytique LLM.
+
+\section{Objectifs du module d'analytique}
+
+Les objectifs principaux sont :
+\begin{itemize}
+	\item fournir des \textbf{tableaux de bord synthétiques} pour les décideurs ;
+	\item permettre une \textbf{exploration interactive} des données de vente, de stock et de commandes ;
+	\item offrir des vues spécifiques par rôle (ADMIN\_G, ADMIN\_STORE, INVESTOR, CAISSIER) ;
+	\item servir de \textbf{source d'information} pour l'assistant analytique LLM, sans lui donner d'accès direct à la base de données ;
+	\item permettre des \textbf{exports} (CSV, éventuellement PDF) pour des analyses externes.
+\end{itemize}
+
+\section{Services statistiques côté backend}
+
+Deux services principaux prennent en charge le calcul des statistiques :
+
+\subsection{StatisticsService}
+
+Ce service calcule les \textbf{statistiques de base}, par exemple :
+\begin{itemize}
+	\item chiffre d'affaires total sur une période donnée ;
+	\item nombre de commandes ;
+	\item nombre de produits vendus ;
+	\item valeur de stock actuelle ;
+	\item taux de rupture de stock.
+\end{itemize}
+
+Il expose typiquement une méthode du type :
+
+\begin{lstlisting}[language=Java,caption={Exemple de signature de service pour les statistiques de base},label={lst:basic-stats-service}]
+public DashboardStatsDTO getDashboardStats(Long userId,
+																					UserRole role,
+																					StatisticsFilterDTO filter) {
+		// ...
+}
+\end{lstlisting}
+
+Les paramètres \texttt{userId} et \texttt{role} permettent d'adapter la requête :
+\begin{itemize}
+	\item un ADMIN\_G voit toutes les données, possiblement agrégées par magasin ;
+	\item un ADMIN\_STORE ne voit que les commandes et stocks de son magasin ;
+	\item un INVESTOR ne voit que les produits et performances qui le concernent ;
+	\item un CAISSIER ne voit éventuellement qu'un sous-ensemble très limité des statistiques.
+\end{itemize}
+
+Le paramètre \texttt{StatisticsFilterDTO} encapsule les filtres : période (dates de début/fin), magasin, catégorie, etc.
+
+\subsection{EnhancedStatisticsService}
+
+Ce service propose un \textbf{tableau de bord avancé}, regroupé dans un DTO \texttt{EnhancedDashboardDTO}. Il inclut :
+\begin{itemize}
+	\item des listes de \og top \fg{} (top produits par CA, par marge, top magasins, top investisseurs) ;
+	\item des répartitions par catégorie et par magasin ;
+	\item des séries temporelles (courbes de CA par jour, semaine, mois) ;
+	\item des indicateurs spécifiques au module de bidding (sections les plus performantes, taux d'occupation, etc.).
+\end{itemize}
+
+Une signature typique :
+
+\begin{lstlisting}[language=Java,caption={Exemple de service de statistiques avancées},label={lst:enhanced-dashboard-service}]
+public EnhancedDashboardDTO getEnhancedDashboard(Long userId,
+												UserRole role,
+												StatisticsFilterDTO filter) {
+		// Requetes JPA, agregations, mapping vers le DTO
+}
+\end{lstlisting}
+
+Comme pour les statistiques de base, le rôle et l'identifiant utilisateur sont utilisés pour limiter l'accès aux données. Par exemple, un investisseur ne voit que les performances de ses sections et produits.
+
+\section{DTO et structure des tableaux de bord}
+
+Les résultats sont organisés dans des DTO fortement typés, par exemple :
+
+\subsection{DashboardStatsDTO}
+
+Ce DTO représente le tableau de bord \og simple \fg{} avec des KPIs globaux. Il peut contenir :
+\begin{itemize}
+	\item des champs numériques (\texttt{totalRevenue}, \texttt{totalOrders}, \texttt{totalProductsSold}, \texttt{stockValue}) ;
+	\item des séries temporelles sous forme de listes d'objets (date, valeur) ;
+	\item des répartitions par catégorie ou magasin.
+\end{itemize}
+
+\subsection{EnhancedDashboardDTO}
+
+Ce DTO représente un \textbf{tableau de bord enrichi}, comprenant des collections de structures plus détaillées, par exemple :
+\begin{itemize}
+	\item une liste de \texttt{RankingItemDTO} pour les top produits (avec nom, CA, marge, rang) ;
+	\item une liste de top magasins ;
+	\item une liste de top investisseurs ;
+	\item des cartes de chaleur (heatmaps) de ventes par région/magasin ;
+	\item des indicateurs liés au bidding (sections les plus demandées, sections inoccupées, etc.).
+\end{itemize}
+
+Structurer les données de cette manière facilite :
+\begin{itemize}
+	\item la consommation côté frontend (typage TypeScript aligné sur le DTO Java) ;
+	\item la réutilisation des données par l'assistant LLM, qui travaille sur des résumés construits à partir de ces DTO.
+\end{itemize}
+
+\section{Endpoints REST liés aux statistiques}
+
+Les services statistiques sont exposés via des contrôleurs REST, par exemple :
+\begin{itemize}
+	\item \texttt{GET /api/statistics/basic} : retourne un \texttt{DashboardStatsDTO} pour le rôle et les filtres fournis ;
+	\item \texttt{GET /api/statistics/enhanced} : retourne un \texttt{EnhancedDashboardDTO} ;
+	\item éventuellement des endpoints dédiés aux exports (\texttt{/api/statistics/export-csv}, etc.).
+\end{itemize}
+
+Ces endpoints :
+\begin{enumerate}
+	\item récupèrent l'ID utilisateur et le rôle via le filtre JWT ;
+	\item construisent un objet \texttt{StatisticsFilterDTO} à partir des paramètres de requête ;
+	\item délèguent aux services métier ;
+	\item renvoient le DTO sous forme de JSON.
+\end{enumerate}
+
+\section{Rendu des tableaux de bord côté frontend}
+
+Les pages de statistiques côté frontend consomment les DTO du backend pour afficher les informations de façon visuelle :
+
+\subsection{Tableau de bord de base}
+
+La page \texttt{Dashboard.tsx} (ou équivalent) peut afficher :
+\begin{itemize}
+	\item une grille de \textbf{StatCard} montrant les principaux KPI (CA, commandes, produits vendus, valeur de stock) ;
+	\item un graphique linéaire de l'évolution du CA sur la période sélectionnée ;
+	\item un diagramme circulaire (\textit{pie chart}) de la répartition du CA par catégorie ;
+	\item un tableau listant les commandes récentes.
+\end{itemize}
+
+Chaque composant graphique est alimenté par les données du DTO \texttt{DashboardStatsDTO}. Les filtres (période, magasin, catégorie) sont gérés via \texttt{FilterPanel}, qui déclenche de nouveaux appels API en cas de modification.
+
+\subsection{Tableau de bord avancé}
+
+La page \texttt{EnhancedStatistics.tsx} est dédiée aux utilisateurs ayant besoin d'analyses plus poussées (ADMIN\_G, ADMIN\_STORE, INVESTOR). Elle peut inclure :
+\begin{itemize}
+	\item des blocs \og Top 10 produits \fg{} ordonnés par CA ou marge ;
+	\item un top magasins par CA ;
+	\item un top investisseurs par montant d'enchères gagnées ;
+	\item des heatmaps ou cartes montrant la répartition géographique des performances ;
+	\item des comparaisons de périodes (par exemple ce mois-ci vs mois dernier).
+\end{itemize}
+
+La structure du DTO \texttt{EnhancedDashboardDTO} est pensée pour correspondre à ces besoins, en fournissant directement des collections déjà triées et agrégées, ce qui simplifie la logique côté frontend.
+
+\section{Gestion des exports}
+
+Pour certains profils (par exemple ADMIN\_G et ADMIN\_STORE), il est utile de pouvoir exporter les données pour des analyses complémentaires (Excel, outils BI, etc.).
+
+Le backend peut fournir des endpoints tels que :
+\begin{itemize}
+	\item \texttt{GET /api/statistics/export-csv?filter=...} : génère un fichier CSV contenant les données agrégées ;
+	\item éventuellement \texttt{GET /api/statistics/export-pdf} : génère un rapport PDF (tableaux, graphiques simplifiés).
+\end{itemize}
+
+Le frontend propose alors des boutons d'action (\og Export CSV \fg{}, \og Export PDF \fg{}), qui déclenchent le téléchargement du fichier et informent l'utilisateur du succès ou de l'échec de l'opération.
+
+\section{Rôle de l'analytique pour le module de bidding}
+
+Le module d'analytique ne se limite pas aux ventes et stocks. Il fournit également des indicateurs pour le module de bidding :
+\begin{itemize}
+	\item performance historique des sections (CA généré, trafic estimé, taux de rotation des produits) ;
+	\item taux d'occupation des sections (sections louées vs disponibles) ;
+	\item comparaison des résultats avant/après installation d'un investisseur sur une section.
+\end{itemize}
+
+Ces informations sont essentielles pour :
+\begin{itemize}
+	\item aider les investisseurs à choisir les sections les plus pertinentes pour leurs produits ;
+	\item permettre aux administrateurs de magasin de valoriser leurs espaces de rayon ;
+	\item alimenter l'assistant LLM lorsqu'un utilisateur pose une question spécifique sur les performances des sections ou des bids.
+\end{itemize}
+
+\section{Lien avec l'assistant analytique LLM}
+
+L'assistant LLM ne dispose pas d'un accès direct à la base de données. Il s'appuie exclusivement sur les \textbf{résultats des services statistiques} pour formuler ses réponses.
+
+Le workflow est le suivant :
+\begin{enumerate}
+	\item L'utilisateur pose une question (via le frontend) ;
+	\item Côté backend, \texttt{AnalyticsAssistantService} appelle \texttt{StatisticsService} et \texttt{EnhancedStatisticsService} avec le rôle et les filtres appropriés ;
+	\item Ces services renvoient des DTO (\texttt{DashboardStatsDTO}, \texttt{EnhancedDashboardDTO}) contenant les statistiques filtrées ;
+	\item \texttt{AnalyticsAssistantService} construit un \textbf{résumé textuel} de ces statistiques (par exemple \og Le chiffre d'affaires de ce mois-ci est de X euros, les 3 produits les plus vendus sont A, B, C... \fg{}) ;
+	\item Ce résumé est inclus dans le prompt envoyé au LLM via Spring AI ;
+	\item Le LLM renvoie une réponse structurée en langage naturel, que le backend transmet au frontend.
+\end{enumerate}
+
+Cette approche garantit que :
+\begin{itemize}
+	\item les contraintes de rôle et de périmètre sont respectées (puisque le LLM ne voit que ce que les services statistiques retournent) ;
+	\item la taille des prompts reste maîtrisée (on n'envoie pas des objets JSON bruts gigantesques au LLM) ;
+	\item l'assistant donne des réponses cohérentes avec les graphiques et tableaux du dashboard.
+\end{itemize}
+
+Ainsi, le module d'analytique joue un double rôle : fournir des tableaux de bord visuels et servir de moteur de données pour l'assistant LLM.

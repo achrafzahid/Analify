@@ -113,10 +113,23 @@ The platform features a unique **monthly bidding cycle** for product display sec
 - **Mapping**: MapStruct
 - **Password Encryption**: BCrypt
 
+### Deployment & DevOps
+- **Containerization**: Docker & Docker Compose
+- **Container Orchestration**: Multi-service architecture
+- **Reverse Proxy**: Nginx (production)
+- **Database**: PostgreSQL 16 (containerized)
+
+### AI/ML
+- **LLM Service**: Ollama
+- **Framework**: Spring AI
+- **Model**: llama3.2:3b (local deployment)
+- **Use Case**: Analytics assistant with natural language queries
+
 ### Development Tools
 - **API Testing**: Postman/Insomnia recommended
 - **Database Tool**: pgAdmin 4 or DBeaver
 - **Version Control**: Git
+- **Container Runtime**: Docker Engine 20.10+
 
 ## 📁 Project Structure
 
@@ -214,6 +227,57 @@ analifyProject/
 
 ## 🚀 Getting Started
 
+### Option 1: Docker Deployment (Recommended)
+
+The easiest way to run the entire application stack:
+
+#### Prerequisites
+- Docker Engine 20.10+ ([Install Docker](https://docs.docker.com/engine/install/))
+- Docker Compose 2.0+
+- 4GB+ available RAM
+- 10GB+ free disk space
+
+#### Quick Start
+```bash
+# Navigate to project root
+cd analifyProject
+
+# Start all services (backend, frontend, database, Ollama)
+docker-compose up -d
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+```
+
+**Access:**
+- Frontend: http://localhost
+- Backend API: http://localhost:8081/api
+- Ollama LLM: http://localhost:11434
+
+**Manage:**
+```bash
+# Stop services
+docker-compose stop
+
+# Restart services
+docker-compose restart
+
+# Rebuild after code changes
+docker-compose up -d --build
+
+# Stop and remove everything
+docker-compose down
+```
+
+📖 **Full Docker documentation**: See [README.Docker.md](README.Docker.md)
+
+---
+
+### Option 2: Manual Setup (Development)
+
 ### Prerequisites
 
 Before you begin, ensure you have the following installed:
@@ -221,6 +285,7 @@ Before you begin, ensure you have the following installed:
 - **Java Development Kit** (JDK 21)
 - **Maven** (3.6 or higher)
 - **PostgreSQL** (14 or higher)
+- **Ollama** (for LLM analytics assistant)
 - **Git**
 
 ### Database Setup
@@ -537,13 +602,29 @@ cd backAnalify
 
 ## 📦 Production Build
 
-### Frontend
+### Docker Deployment (Recommended)
+```bash
+# Production deployment with Docker
+docker-compose up -d
+
+# Scale services if needed
+docker-compose up -d --scale backend=2
+
+# View resource usage
+docker stats
+```
+
+See [README.Docker.md](README.Docker.md) for production deployment guide.
+
+### Manual Build
+
+#### Frontend
 ```bash
 cd frontAnalify
 npm run build       # Creates dist/ folder
 ```
 
-### Backend
+#### Backend
 ```bash
 cd backAnalify
 ./mvnw clean package    # Creates target/*.jar file
@@ -552,7 +633,35 @@ java -jar target/analify-0.0.1-SNAPSHOT.jar
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+### Docker Issues
+
+**Services won't start:**
+```bash
+# Check service status
+docker-compose ps
+
+# View logs
+docker-compose logs backend
+docker-compose logs postgres
+
+# Restart specific service
+docker-compose restart backend
+```
+
+**Port conflicts:**
+- Edit `docker-compose.yml` to change port mappings
+- Example: Change frontend port from `80:80` to `8080:80`
+
+**Ollama model not loading:**
+```bash
+# Pull model manually
+docker exec analify-ollama ollama pull llama3.2:3b
+
+# Check available models
+docker exec analify-ollama ollama list
+```
+
+### Manual Setup Issues
 
 **Backend won't start:**
 - Verify PostgreSQL is running

@@ -1,0 +1,171 @@
+\chapter{Assistant analytique LLM (Spring AI + Ollama)}
+
+L'assistant analytique constitue l'une des innovations majeures d'Analify : il permet aux utilisateurs de poser des questions métier en langage naturel (français ou anglais) et d'obtenir des réponses synthétiques, contextualisées et adaptées à leur rôle. Ce chapitre décrit en détail la conception de cet assistant, son évolution technologique (Gemini \textrightarrow{} Spring AI \textrightarrow{} Ollama), la construction du contexte analytique et son intégration dans le frontend.
+
+\section{Objectifs et principes de conception}
+
+Les objectifs poursuivis sont :
+\begin{itemize}
+	\item permettre aux utilisateurs de naviguer dans les données sans devoir manipuler directement des filtres ou tableaux complexes ;
+	\item offrir une interface de \textbf{conversation} continue, accessible depuis toutes les pages du dashboard ;
+	\item garantir que l'assistant respecte les \textbf{contraintes de rôle} et ne divulgue jamais de données hors périmètre ;
+	\item concevoir une intégration flexible, indépendante du fournisseur de LLM (modèle distant, modèle local, etc.).
+\end{itemize}
+
+Pour atteindre ces objectifs, l'assistant a été encapsulé dans un service backend dédié (\texttt{AnalyticsAssistantService}) et un composant frontend réutilisable (\texttt{AnalyticsAssistant.tsx}).
+
+\section{Première version : intégration directe à Google Gemini}
+
+Dans une première étape, l'assistant était intégré directement à l'API \textbf{Google Gemini} via des appels HTTP manuels :
+
+\begin{itemize}
+	\item le backend construisait une requête JSON au format attendu par l'API Gemini (\texttt{/v1beta/models/\{model\}:generateContent}) ;
+	\item le \texttt{systemPrompt} décrivait le rôle de l'assistant (analyste de données pour la grande distribution, travaillant sur Analify) ;
+	\item le \texttt{userPrompt} contenait la question de l'utilisateur et un \og contexte \fg{} issu des statistiques ;
+	\item la réponse (un texte en langage naturel) était extraite du JSON renvoyé par Gemini et renvoyée au frontend.
+\end{itemize}
+
+Cette approche a permis de valider le concept mais a rencontré plusieurs limites :
+\begin{itemize}
+	\item gestion manuelle des appels HTTP (construction du JSON, gestion des codes d'erreur) ;
+	\item quotas et limitations de l'API Gemini (erreurs 429, quotas très rapidement atteints) ;
+	\item forte dépendance à un fournisseur externe.
+\end{itemize}
+
+\section{Refactorisation vers Spring AI}
+
+Pour simplifier l'intégration et se préparer à supporter plusieurs fournisseurs de LLM, le projet a ensuite migré vers \textbf{Spring AI}. Spring AI fournit un \texttt{ChatClient} et des abstractions communes pour interagir avec différents modèles (OpenAI, Gemini, Ollama, etc.).
+
+Les principaux changements :
+\begin{itemize}
+	\item ajout de la dépendance \texttt{spring-ai-openai-spring-boot-starter} (dans un premier temps) et configuration de l'API Gemini via son endpoint compatible \og OpenAI \fg{} ;
+	\item injection d'un \texttt{ChatModel} et construction d'un \texttt{ChatClient} dans le backend ;
+	\item simplification du code d'appel : un simple \texttt{chatClient.prompt().user(prompt).call().content()} au lieu d'un appel HTTP brut.
+\end{itemize}
+
+Le service \texttt{AnalyticsAssistantService} a été refactoré pour utiliser Spring AI, tout en conservant sa responsabilité principale : construire un prompt riche et adapté au rôle de l'utilisateur.
+
+\section{Passage à un LLM local via Ollama}
+
+Malgré l'amélioration de l'architecture, l'utilisation de Gemini restait limitée par les quotas et la dépendance à la connexion Internet. Pour s'affranchir de ces contraintes, le projet a migré vers un \textbf{LLM local} en utilisant \textbf{Ollama}.
+
+Ollama est un serveur local qui permet de télécharger et d'exécuter des modèles (par exemple \texttt{llama3.2}) sur la machine de développement, via une API HTTP compatible avec les attentes de Spring AI.
+
+Les changements côté backend ont été les suivants :
+\begin{itemize}
+	\item remplacement de la dépendance Spring AI OpenAI par \texttt{spring-ai-ollama-spring-boot-starter} ;
+	\item mise à jour de \texttt{application.properties} pour pointer vers l'URL d'Ollama (par défaut \texttt{http://localhost:11434}) et définir le modèle utilisé (par exemple \texttt{llama3.2}) ;
+	\item aucun changement dans la signature de \texttt{AnalyticsAssistantService} : celui-ci continue d'utiliser le \texttt{ChatClient}, sans se soucier du fournisseur réel.
+\end{itemize}
+
+Cette migration a permis :
+\begin{itemize}
+	\item de s'affranchir des quotas d'API ;
+	\item de travailler en mode hors-ligne (dans la limite des capacités matérielles de la machine) ;
+	\item de mieux contrôler les temps de réponse et la confidentialité des données (tout reste en local).
+\end{itemize}
+
+\section{Construction du contexte analytique}
+
+L'une des difficultés majeures consistait à \textbf{fournir au LLM suffisamment de contexte} pour répondre utilement aux questions, sans pour autant :
+\begin{itemize}
+	\item envoyer un volume de données énorme ;
+	\item enfreindre les contraintes de rôle et de périmètre ;
+	\item provoquer des erreurs techniques (par exemple, dépassement des limites de taille des chaînes JSON).
+\end{itemize}
+
+Dans une version initiale, le backend tentait d'inclure directement des structures JSON complexes (entiers DTO) dans le prompt, ce qui a conduit à des erreurs (\texttt{StreamConstraintsException} liée à la taille des chaînes lors de la sérialisation).
+
+La solution a été de passer à une \textbf{approche de résumé textuel} :
+
+\begin{enumerate}
+	\item \texttt{AnalyticsAssistantService} appelle \texttt{StatisticsService} et \texttt{EnhancedStatisticsService} avec \texttt{userId}, \texttt{role} et un \texttt{StatisticsFilterDTO} raisonnable (par exemple la période récente) ;
+	\item les DTO retournés sont parcourus dans le service pour produire des phrases résumant les principaux indicateurs, par exemple :
+	\begin{itemize}
+		\item \og Le chiffre d'affaires du dernier mois est de X euros. \fg{}
+		\item \og Les 3 produits les plus vendus sont A, B, C avec respectivement V1, V2 et V3 unités. \fg{}
+		\item \og Il y a N produits en low stock. \fg{}
+	\end{itemize}
+	\item Pour les investisseurs, le résumé se focalise sur leurs sections et bids ; pour les administrateurs, sur les magasins ; pour les caissiers, sur des informations simplifiées.
+	\item Ce texte est ensuite concaténé avec la question de l'utilisateur et un rappel du rôle (\og Tu parles à un administrateur de magasin... \fg{}).
+\end{enumerate}
+
+Ce résumé constitue le \og contexte analytique \fg{} injecté dans le prompt. Il permet au LLM de raisonner sur des informations synthétiques, alignées sur ce que l'utilisateur verrait dans les dashboards.
+
+\section{Gestion des erreurs et métadonnées de réponse}
+
+L'intégration avec un LLM étant sujette à diverses erreurs (problèmes réseau, limites de quota, mauvaise configuration), le service d'assistance a été conçu pour retourner, en plus de la réponse textuelle :
+
+\begin{itemize}
+	\item un champ \texttt{error} dans \texttt{AnalyticsAssistantResponse.metadata}, indiquant le type d'erreur (\texttt{QUOTA\_EXCEEDED}, \texttt{AUTH\_ERROR}, \texttt{LLM\_CALL\_FAILED}, etc.) ;
+	\item d'autres métadonnées utiles, comme le rôle utilisé ou le nombre de produits en low stock.
+\end{itemize}
+
+En cas d'erreur spécifique (par exemple, code 429 de l'API Gemini dans l'ancienne version), le service renvoyait un message d'erreur compréhensible par l'utilisateur (\og Le service d'IA a atteint sa limite de quota, veuillez réessayer plus tard. \fg{}).
+
+Avec Ollama, les erreurs sont principalement liées à :
+\begin{itemize}
+	\item l'absence du serveur Ollama (non démarré) ;
+	\item l'absence du modèle spécifié (non téléchargé) ;
+	\item des temps de réponse trop longs sur des machines peu puissantes.
+\end{itemize}
+
+Le frontend, via \texttt{AnalyticsAssistant.tsx}, interprète ces métadonnées pour afficher des messages et badges adaptés.
+
+\section{Interface utilisateur de l'assistant}
+
+Le composant \texttt{AnalyticsAssistant.tsx} offre une interface de chat simple et efficace :
+
+\begin{itemize}
+	\item un bouton flottant dans le \texttt{DashboardLayout} ouvre/ferme le panneau de chat ;
+	\item une zone de texte permet de saisir la question ;
+	\item une liste de messages affiche l'historique (questions de l'utilisateur et réponses de l'assistant) ;
+	\item des badges affichent des informations comme le rôle, le nombre de low stock, et le type d'erreur en cas de problème LLM.
+\end{itemize}
+
+\subsection{Cycle de requête côté frontend}
+
+Le cycle côté frontend est :
+
+\begin{enumerate}
+	\item L'utilisateur saisit une question et clique sur \og Envoyer \fg{} ;
+	\item Le composant ajoute immédiatement le message de l'utilisateur à la liste (optimisme, pour ressentir une réactivité) ;
+	\item Un état de chargement est activé ;
+	\item La question est envoyée à l'endpoint backend via \texttt{assistantApi.askQuestion} ;
+	\item À la réception de la réponse, le message de l'assistant est ajouté à l'historique, et l'état de chargement est désactivé ;
+	\item En cas d'erreur, un message spécifique est affiché (par exemple \og L'assistant est temporairement indisponible. \fg{}).
+\end{enumerate}
+
+\section{Respect du périmètre et confidentialité des données}
+
+Un point fondamental est que l'assistant ne doit jamais renvoyer des informations auxquelles l'utilisateur n'a pas droit. Pour cela :
+
+\begin{itemize}
+	\item le service LLM ne requête jamais la base de données directement ;
+	\item il s'appuie uniquement sur les services de statistiques (et éventuellement de bidding), qui sont déjà filtrés par \texttt{userId} et \texttt{role} ;
+	\item le résumé textuel ne contient que des informations autorisées par ces services ;
+	\item le LLM ne peut donc pas \og deviner \fg{} des données qu'il n'a pas reçues en contexte.
+\end{itemize}
+
+Cette architecture garantit que les mêmes règles de sécurité s'appliquent que l'utilisateur consulte un graphique dans le dashboard ou pose une question à l'assistant.
+
+\section{Limites actuelles et perspectives d'évolution}
+
+Malgré sa puissance, l'assistant présente certaines limites inhérentes à l'utilisation de LLM :
+
+\begin{itemize}
+	\item possibilité de réponses approximatives ou imprécises (\og hallucinations \fg{}) si le contexte n'est pas suffisamment détaillé ;
+	\item latence de réponse dépendant de la taille du modèle et des ressources matérielles ;
+	\item absence de mémorisation long terme des conversations (hormis l'historique dans le composant durant la session).
+\end{itemize}
+
+Plusieurs améliorations sont envisageables :
+
+\begin{itemize}
+	\item affiner la construction du prompt (instructions plus précises, contraintes de style de réponse, format JSON structuré) ;
+	\item introduire une \textbf{couche de vérification} post-réponse (par exemple, revalider certaines affirmations en requêtant à nouveau le backend) ;
+	\item expérimenter d'autres modèles locaux plus légers ou plus spécialisés (modèles en français, modèles quantifiés pour de meilleures performances) ;
+	\item mettre en place un historique persistant des conversations, permettant à l'utilisateur de reprendre ses analyses là où il les a laissées.
+\end{itemize}
+
+En l'état, l'assistant analytique d'Analify démontre la faisabilité et l'intérêt d'une interface conversationnelle couplée à un module d'analytique métier, tout en respectant les contraintes de sécurité et de périmètre.

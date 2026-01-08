@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
+import { AnalyticsAssistant } from '@/components/shared/AnalyticsAssistant';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
 import { LucideIcon, ShoppingCart, Users, BarChart3, User, Package, AlertTriangle, TrendingUp, Trophy, LayoutDashboard } from 'lucide-react';
@@ -74,6 +75,8 @@ export const DashboardLayout: React.FC = () => {
       <main className="main-content">
         <Outlet />
       </main>
+      {/* Analytics Assistant available for all authenticated users */}
+      <AnalyticsAssistant />
     </div>
   );
 };

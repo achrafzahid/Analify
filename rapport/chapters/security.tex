@@ -1,0 +1,169 @@
+\chapter{Sécurité, authentification et gestion des rôles}
+
+La sécurité est un aspect central du projet Analify : il s'agit de garantir que chaque utilisateur n'accède qu'aux données et fonctionnalités pour lesquelles il est habilité. Ce chapitre détaille la mise en place de l'authentification, de l'autorisation et de la gestion des rôles, essentiellement côté backend Spring Boot, et la manière dont le frontend consomme ces mécanismes.
+
+\section{Objectifs de sécurité}
+
+Les objectifs principaux sont les suivants :
+\begin{itemize}
+	\item \textbf{Authentifier} les utilisateurs via un couple identifiant/mot de passe ;
+	\item \textbf{Distribuer} un token sécurisé (JWT) à chaque session ;
+	\item \textbf{Contrôler l'accès} aux endpoints backend en fonction du rôle et du périmètre de l'utilisateur ;
+	\item \textbf{Propager} l'identité et le rôle à travers toutes les couches (controller, service, repository) pour filtrer les données ;
+	\item Assurer une intégration fluide avec le frontend (stockage du token, redirections, affichage conditionnel des fonctionnalités).
+\end{itemize}
+
+\section{Modèle de rôles fonctionnels}
+
+Analify définit quatre rôles principaux :
+\begin{description}
+	\item[ADMIN\_G] (Administrateur global) : vision et droits sur l'ensemble de l'enseigne (tous les magasins, toutes les sections, tous les utilisateurs) ;
+	\item[ADMIN\_STORE] (Administrateur de magasin) : vision limitée à un magasin donné (stocks, commandes, sections de ce magasin) ;
+	\item[INVESTOR] (Investisseur) : vision centrée sur ses propres sections, produits et enchères ;
+	\item[CAISSIER] : vision restreinte aux opérations de caisse et, éventuellement, à des statistiques très simplifiées.
+\end{description}
+
+Ces rôles sont représentés en Java par une énumération \texttt{UserRole} et sont stockés en base de données (dans la table \texttt{users} ou via une table \texttt{roles}).
+
+\section{Authentification par JWT}
+
+L'authentification est basée sur des \textbf{JSON Web Tokens} (JWT) signés. Le flux est le suivant :
+
+\begin{enumerate}
+	\item L'utilisateur envoie ses identifiants (email/mot de passe) à l'endpoint de login (par exemple \texttt{/api/auth/login}).
+	\item Le backend vérifie les identifiants via un service (\texttt{UserDetailsService} ou service maison) ; si le mot de passe (hashé) correspond, l'utilisateur est authentifié.
+	\item Un JWT est généré contenant au minimum : l'ID utilisateur, le rôle, une date d'expiration, et éventuellement d'autres claims.
+	\item Ce token est renvoyé au frontend, qui le stocke (par exemple dans le \texttt{localStorage} ou un cookie sécurisé).
+	\item Pour chaque requête ultérieure, le frontend ajoute l'en-tête HTTP \texttt{Authorization: Bearer <token>}.
+\end{enumerate}
+
+Le service de génération/validation du JWT repose sur la bibliothèque \texttt{jjwt}. Une clé secrète (stockée en configuration) est utilisée pour signer le token ; le backend la réutilise pour vérifier l'intégrité des tokens reçus.
+
+\section{Configuration Spring Security}
+
+Spring Security est configuré pour :
+\begin{itemize}
+	\item désactiver la gestion de session côté serveur (stateless, puisque le JWT est auto-porteur) ;
+	\item autoriser librement certains endpoints (\texttt{/api/auth/login}, éventuellement \texttt{/api/auth/register}) ;
+	\item exiger une authentification (présence d'un JWT valide) pour tous les endpoints \texttt{/api/**} restants ;
+	\item appliquer un filtre JWT personnalisé à chaque requête ;
+	\item définir les stratégies de CORS (pour autoriser le frontend à appeler le backend depuis un autre domaine/port en développement).
+\end{itemize}
+
+Une configuration typique inclut une classe annotée \texttt{@Configuration} et \texttt{@EnableWebSecurity}, où l'on définit un bean de type \texttt{SecurityFilterChain} :
+
+\begin{lstlisting}[language=Java,caption={Exemple simplifié de configuration Spring Security},label={lst:spring-security-config}]
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+		private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+		@Bean
+		public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+				http
+						.csrf(AbstractHttpConfigurer::disable)
+						.sessionManagement(session ->
+								session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+						)
+						.authorizeHttpRequests(auth -> auth
+								.requestMatchers("/api/auth/**").permitAll()
+								.anyRequest().authenticated()
+						)
+						.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+				return http.build();
+		}
+}
+\end{lstlisting}
+
+\section{Filtre JWT et propagation du rôle}
+
+Le filtre JWT (\texttt{JwtAuthenticationFilter}) est appliqué à chaque requête HTTP entrante :
+
+\begin{enumerate}
+	\item Il lit l'en-tête \texttt{Authorization} ;
+	\item S'il contient un token Bearer, il le valide via le service JWT ;
+	\item En cas de succès, il extrait l'ID utilisateur et le rôle (claims du token) ;
+	\item Il construit un objet \texttt{Authentication} Spring (par exemple \texttt{UsernamePasswordAuthenticationToken}) et le place dans le \texttt{SecurityContext} ;
+	\item Il ajoute également les attributs \texttt{userId} et \texttt{role} à l'objet requête (\texttt{request.setAttribute("userId", ...)}).
+\end{enumerate}
+
+Cela permet aux contrôleurs de récupérer directement ces informations via :
+
+\begin{lstlisting}[language=Java,caption={Injection de l'ID utilisateur et du rôle dans un contrôleur},label={lst:request-attributes}]
+@PostMapping("/query")
+public AnalyticsAssistantResponse queryAnalyticsAssistant(
+				@RequestAttribute("userId") Long userId,
+				@RequestAttribute("role") UserRole role,
+				@RequestBody AnalyticsAssistantRequest request) {
+
+		return analyticsAssistantService.answerQuestion(userId, role, request.getQuestion());
+}
+\end{lstlisting}
+
+Cette technique de propagation par \texttt{RequestAttribute} est particulièrement utile pour les services qui ne dépendent pas directement de Spring Security mais ont besoin de connaître l'utilisateur courant.
+
+\section{Stratégies d'autorisation par rôle}
+
+Outre la configuration globale, certaines restrictions plus fines peuvent être mises en place :
+
+\subsection{Au niveau des endpoints}
+
+On peut utiliser des annotations telles que \texttt{@PreAuthorize} pour restreindre l'accès à certaines méthodes de contrôleur ou services :
+
+\begin{lstlisting}[language=Java,caption={Exemple d'autorisation fine via @PreAuthorize},label={lst:preauthorize}]
+@PreAuthorize("hasRole('ADMIN_G')")
+@PostMapping("/bidding/sections/{id}/close")
+public void closeSectionBidding(@PathVariable Long id) {
+		biddingService.closeSectionBidding(id);
+}
+\end{lstlisting}
+
+Ainsi, seule un utilisateur avec le rôle ADMIN\_G (ou éventuellement ADMIN\_STORE pour son magasin) pourra fermer les enchères d'une section.
+
+\subsection{Au niveau des services et repositories}
+
+Dans de nombreux cas, les règles d'autorisation sont implémentées directement dans la logique métier : les services reçoivent \texttt{userId} et \texttt{role} en paramètre et adaptent leurs requêtes JPA en conséquence, par exemple :
+
+\begin{itemize}
+	\item un \texttt{StatisticsService} qui filtre les commandes par \texttt{storeId} lorsque le rôle est ADMIN\_STORE ;
+	\item un \texttt{BiddingService} qui ne retourne que les sections associées à l'investisseur pour le rôle INVESTOR ;
+	\item un service de produits qui ne retourne que les stocks d'un magasin.
+\end{itemize}
+
+Ce double niveau (config Spring Security + filtrage métier) garantit un bon équilibre entre flexibilité et sécurité.
+
+\section{Sécurité côté frontend}
+
+Bien que la sécurité \og forte \fg{} soit assurée côté backend, le frontend joue un rôle important pour l'expérience utilisateur :
+
+\begin{itemize}
+	\item Stockage du token JWT (par exemple dans \texttt{localStorage}) et gestion de l'état d'authentification via \texttt{AuthContext} ;
+	\item Ajout systématique de l'en-tête Authorization dans les appels API (via le service \texttt{api.ts}) ;
+	\item Redirection automatique vers la page de login en cas d'erreur 401/403 ;
+	\item Affichage conditionnel des éléments d'interface selon le rôle (par exemple, cacher les menus d'administration aux investisseurs ou caissiers).
+\end{itemize}
+
+Par exemple, la sidebar du \texttt{DashboardLayout} peut afficher certains liens uniquement pour les utilisateurs ADMIN\_G ou ADMIN\_STORE.
+
+\section{Limitations et pistes d'amélioration}
+
+Dans le cadre de ce projet, la sécurité mise en place se concentre sur :
+\begin{itemize}
+	\item la protection basique des endpoints ;
+	\item l'isolation des données par rôle ;
+	\item la robustesse minimale de l'authentification.
+\end{itemize}
+
+Plusieurs améliorations pourraient être envisagées dans une version industrielle d'Analify :
+\begin{itemize}
+	\item gestion du renouvellement des tokens (refresh tokens) ;
+	\item intégration avec un annuaire d'entreprise (LDAP, Active Directory) ;
+	\item audit des actions sensibles (journalisation des modifications, accès aux données critiques) ;
+	\item durcissement des en-têtes HTTP (CSP, HSTS, X-Frame-Options, etc.) ;
+	\item monitoring des tentatives de connexion et mise en place de mécanismes anti-bruteforce.
+\end{itemize}
+
+Malgré ces limites, la solution actuelle fournit une base solide pour un projet académique et garantit que chaque profil (ADMIN\_G, ADMIN\_STORE, INVESTOR, CAISSIER) ne voit que ce qu'il est censé voir, y compris dans le cadre de l'assistant LLM.

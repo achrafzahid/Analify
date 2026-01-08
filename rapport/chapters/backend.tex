@@ -1,0 +1,209 @@
+\chapter{Conception détaillée du backend Spring Boot}
+
+Dans ce chapitre, nous détaillons la conception et l'implémentation du backend \textbf{Analify}, basé sur le framework \textbf{Spring Boot 3.4.13} et le langage \textbf{Java 21}. L'objectif est de montrer comment les différents modules (authentification, statistiques, bidding, assistant LLM, etc.) s'articulent autour d'une architecture en couches propre, maintenable et sécurisée.
+
+\section{Choix technologiques}
+
+Le backend repose sur les composants principaux suivants :
+\begin{itemize}
+	\item \textbf{Spring Boot 3.4.13} : socle applicatif pour exposer des API REST, gérer la configuration et le cycle de vie de l'application ;
+	\item \textbf{Java 21} : version LTS moderne du JDK, offrant de meilleures performances et des fonctionnalités de langage récentes ;
+	\item \textbf{Spring Web} : pour l'exposition d'endpoints REST (contrôleurs annotés avec \texttt{@RestController}) ;
+	\item \textbf{Spring Data JPA} : pour accéder à la base de données PostgreSQL via des entités JPA et des repositories ;
+	\item \textbf{PostgreSQL} : SGBD relationnel utilisé pour stocker les données métier (utilisateurs, produits, stocks, commandes, sections, bids, etc.) ;
+	\item \textbf{Spring Security + JWT} : pour l'authentification et l'autorisation basées sur des tokens JWT signés ;
+	\item \textbf{Spring AI + Ollama} : pour l'intégration d'un LLM local, utilisé par l'assistant analytique ;
+	\item \textbf{Lombok} : pour réduire le code boilerplate (getters/setters, constructeurs, \texttt{@Builder}, etc.).
+\end{itemize}
+
+La gestion du build est assurée par \textbf{Maven} via le fichier \texttt{pom.xml} du module \texttt{backAnalify}.
+
+\section{Organisation du projet Maven}
+
+Le projet backend se trouve dans le dossier \texttt{backAnalify/}. À la racine, on trouve notamment :
+\begin{itemize}
+	\item \texttt{pom.xml} : configuration Maven (dépendances, plugins, version de Java, Spring Boot) ;
+	\item \texttt{src/main/java/com/analyfy/analify/} : code source Java ;
+	\item \texttt{src/main/resources/} : fichiers de configuration (\texttt{application.properties}) ;
+	\item \texttt{src/test/java/} : éventuels tests unitaires et d'intégration.
+\end{itemize}
+
+Dans le fichier \texttt{pom.xml}, on retrouve les dépendances typiques d'une application Spring Boot REST :
+\begin{itemize}
+	\item \texttt{spring-boot-starter-web} ;
+	\item \texttt{spring-boot-starter-data-jpa} ;
+	\item \texttt{spring-boot-starter-security} ;
+	\item \texttt{postgresql} (driver JDBC) ;
+	\item \texttt{jjwt} pour la gestion des JWT ;
+	\item \texttt{spring-ai-ollama-spring-boot-starter} pour l'intégration du LLM local ;
+	\item \texttt{lombok}, \texttt{validation-api}, etc.
+\end{itemize}
+
+\section{Architecture en couches}
+
+Le backend suit une \textbf{architecture en couches} classique, qui sépare clairement les responsabilités :
+\begin{itemize}
+	\item \textbf{Controller} : exposition des API REST ;
+	\item \textbf{Service} : logique métier ;
+	\item \textbf{Repository} : accès aux données (couche de persistance) ;
+	\item \textbf{Entity} : mapping objet-relationnel (JPA) ;
+	\item \textbf{DTO / Mapper} : objets de transfert pour le frontend ;
+	\item \textbf{Security} : configuration Spring Security, filtres JWT ;
+	\item \textbf{Integration LLM} : service dédié à l'assistant analytique.
+\end{itemize}
+
+\subsection{Package Controller}
+
+Le package \texttt{controller} regroupe les différents contrôleurs REST, par exemple :
+\begin{itemize}
+	\item \texttt{AuthController} : gestion de l'authentification (login, génération de JWT) ;
+	\item \texttt{UserController} : gestion des utilisateurs (création, listing, etc.) ;
+	\item \texttt{StatisticsController} : exposition des statistiques de base ;
+	\item \texttt{EnhancedStatisticsController} ou équivalent : exposition du tableau de bord avancé ;
+	\item \texttt{ProductController} : gestion des produits et stocks ;
+	\item \texttt{OrderController} : gestion des commandes ;
+	\item \texttt{BiddingController} : endpoints du module d'enchères ;
+	\item \texttt{AnalyticsAssistantController} : endpoint de l'assistant analytique LLM.
+\end{itemize}
+
+Chaque contrôleur est annoté avec \texttt{@RestController} et \texttt{@RequestMapping("/api/...")}. Il se contente de :
+\begin{itemize}
+	\item récupérer les paramètres de la requête (corps JSON, paramètres de chemin, paramètres de requête) ;
+	\item extraire l'identité de l'utilisateur et son rôle via des \texttt{@RequestAttribute} alimentés par le filtre JWT ;
+	\item déléguer au service métier associé ;
+	\item renvoyer la réponse sous forme de DTO, automatiquement sérialisés en JSON.
+\end{itemize}
+
+\subsection{Package Service}
+
+Le package \texttt{service} contient la \textbf{logique métier} d'Analify. On y trouve notamment :
+\begin{itemize}
+	\item \texttt{StatisticsService} : calcul des KPI de base (CA, nombre de commandes, produits vendus, etc.) ;
+	\item \texttt{EnhancedStatisticsService} : calcul du tableau de bord avancé (top produits, top magasins, analyses par rôle, etc.) ;
+	\item \texttt{ProductService} : gestion des produits, du stock, des alertes low stock ;
+	\item \texttt{OrderService} : gestion des commandes et de leurs états ;
+	\item \texttt{BiddingService} : logique liée aux catégories, rangs, faces, sections et enchères ;
+	\item \texttt{UserService} : gestion des utilisateurs et de leurs rôles ;
+	\item \texttt{AnalyticsAssistantService} : construction du contexte analytique et appel au LLM via Spring AI.
+\end{itemize}
+
+Tous ces services sont annotés avec \texttt{@Service} et, lorsque cela est pertinent, \texttt{@Transactional} pour encadrer les opérations en base.
+
+\subsection{Package Repository}
+
+Le package \texttt{repository} contient les interfaces Spring Data JPA, par exemple :
+\begin{itemize}
+	\item \texttt{UserRepository} ;
+	\item \texttt{StoreRepository} ;
+	\item \texttt{ProductRepository} ;
+	\item \texttt{OrderRepository}, \texttt{OrderLineRepository} ;
+	\item \texttt{CategoryRepository}, \texttt{SectionRepository}, \texttt{BidRepository} ;
+	\item etc.
+\end{itemize}
+
+Chaque repository étend généralement \texttt{JpaRepository<Entity, Long>} et définit, si nécessaire, des méthodes de requêtage spécifiques (par ex. \texttt{findByStoreIdAndStatus(...)}).
+
+\subsection{Package Entity}
+
+Le package \texttt{entity} regroupe les entités JPA qui représentent les tables de la base de données. Quelques entités clés :
+\begin{itemize}
+	\item \textbf{User} : représente un utilisateur de la plateforme (administrateur global, administrateur de magasin, investisseur, caissier) ;
+	\item \textbf{Store} : représente un magasin physique ;
+	\item \textbf{Product} : produit vendu en magasin ;
+	\item \textbf{Stock} : niveau de stock d'un produit dans un magasin donné ;
+	\item \textbf{Order} et \textbf{OrderLine} : commandes et lignes de commandes ;
+	\item \textbf{Category}, \textbf{Section}, \textbf{Bid} : entités principales du module de bidding ;
+	\item \textbf{Role} ou énumération \texttt{UserRole} : rôle fonctionnel de l'utilisateur.
+\end{itemize}
+
+Les entités sont annotées avec \texttt{@Entity}, \texttt{@Table}, et possèdent des relations \texttt{@OneToMany}, \texttt{@ManyToOne}, etc. afin de modéliser les liens entre magasins, produits, sections et enchères.
+
+\subsection{DTO et mappers}
+
+Le backend expose des DTO (Data Transfer Objects) pour éviter de retourner directement les entités JPA au frontend. On trouve par exemple :
+\begin{itemize}
+	\item \texttt{DashboardStatsDTO} : DTO pour le tableau de bord de statistiques de base ;
+	\item \texttt{EnhancedDashboardDTO} : DTO pour le tableau de bord avancé ;
+	\item \texttt{RankingItemDTO} : éléments de top produits, top magasins, etc. ;
+	\item \texttt{SectionDTO}, \texttt{BidDTO} : objets pour le module de bidding ;
+	\item \texttt{AnalyticsAssistantRequest} et \texttt{AnalyticsAssistantResponse} : DTO pour l'assistant LLM.
+\end{itemize}
+
+Des mappers (manuels ou générés) se chargent de transformer les entités en DTO et inversement lorsque nécessaire.
+
+\section{Modèle de données : vue d'ensemble}
+
+La base de données PostgreSQL est organisée autour de plusieurs \textbf{sous-domaines} :
+\begin{description}
+	\item[Utilisateurs et rôles] tables \texttt{users}, \texttt{roles} (ou rôle en tant que champ enum), association éventuelle utilisateur \texttt{\textendash store} pour les administrateurs de magasin ;
+	\item[Magasins] table \texttt{stores} avec les informations de localisation, taille, etc. ;
+	\item[Produits et stocks] tables \texttt{products}, \texttt{stocks} (stock par produit et par magasin), catégories de produits ;
+	\item[Commandes] tables \texttt{orders}, \texttt{order\_lines} pour tracer chaque vente ;
+	\item[Bidding] tables \texttt{categories}, \texttt{sections}, \texttt{bids} pour représenter la hiérarchie de rayon et les enchères ;
+	\item[Statistiques agrégées] agrégations réalisées à la volée par les services, plutôt que stockées de façon redondante.
+\end{description}
+
+Une représentation schématique de ce modèle peut être insérée sous forme de diagramme ER :
+
+\begin{figure}[h]
+	\centering
+	\fbox{\parbox{0.9\textwidth}{\centering \textit{(Diagramme ER simplifié : Users, Stores, Products, Stocks, Orders, Sections, Bids)}}}
+	\caption{Vue simplifiée du modèle de données backend}
+\end{figure}
+
+\section{Configuration de l'application}
+
+La configuration se fait principalement via le fichier \texttt{application.properties} :
+\begin{itemize}
+	\item \texttt{server.port=8081} : port HTTP du backend ;
+	\item propriétés de connexion Postgres (URL, utilisateur, mot de passe) ;
+	\item \texttt{spring.jpa.hibernate.ddl-auto} (souvent \texttt{update} pour le développement) ;
+	\item propriétés liées au JWT (secret, expiration) ;
+	\item propriétés \texttt{spring.ai.ollama.*} pour pointer vers le serveur Ollama local et le modèle à utiliser.
+\end{itemize}
+
+Cette configuration est externalisable (variables d'environnement, fichiers de configuration par profil) afin d'adapter facilement le déploiement à différents environnements (développement, test, production).
+
+\section{Gestion de la sécurité (aperçu)}
+
+La sécurité détaillée est décrite dans un chapitre dédié, mais nous donnons ici un aperçu de son intégration dans le backend :
+\begin{itemize}
+	\item Spring Security est configuré pour sécuriser tous les endpoints sous \texttt{/api/**}, à l'exception de ceux d'authentification (login, éventuellement inscription) ;
+	\item un filtre JWT intercepte chaque requête, valide le token, construit un \texttt{Authentication} Spring, et ajoute à la requête les attributs \texttt{userId} et \texttt{role} ;
+	\item les contrôleurs et services peuvent ensuite exploiter ces informations pour filtrer les données (par exemple, ne retourner que les sections appartenant à un investisseur donné).
+\end{itemize}
+
+Ce mécanisme est essentiel pour garantir que les statistiques et le module de bidding respectent le \textbf{périmètre de visibilité} de chaque profil.
+
+\section{Intégration de l'assistant LLM côté backend}
+
+Le backend expose un endpoint pour l'assistant analytique, via \texttt{AnalyticsAssistantController}, qui délègue à \texttt{AnalyticsAssistantService}. Ce service :
+\begin{enumerate}
+	\item récupère le contexte utilisateur (ID, rôle) ;
+	\item interroge les services de statistiques (de base et avancées) et de produits pour construire un \textbf{résumé textuel} des données pertinentes ;
+	\item forge un prompt en langage naturel, combinant la question de l'utilisateur et le contexte ;
+	\item appelle Spring AI (\texttt{ChatClient}) pour obtenir une réponse du modèle Ollama ;
+	\item encapsule la réponse et des métadonnées (par exemple le nombre de produits en low stock) dans un DTO \texttt{AnalyticsAssistantResponse}.
+\end{enumerate}
+
+L'intérêt d'encapsuler toute la logique LLM dans un service dédié est double :
+\begin{itemize}
+	\item le reste du backend n'a pas à connaître les détails d'implémentation (Gemini vs Ollama, Spring AI, etc.) ;
+	\item il est possible de faire évoluer le modèle ou la stratégie de prompt sans impacter les contrôleurs ni les DTO.
+\end{itemize}
+
+\section{Exemple de flux applicatif complet}
+
+Pour illustrer la coopération entre les différentes couches, considérons le scénario suivant : \og Un investisseur consulte ses sections disponibles et place une enchère \fg{}.
+
+\begin{enumerate}
+	\item L'investisseur se connecte via le frontend (page \texttt{Login}), qui appelle l'endpoint \texttt{/api/auth/login}. Le backend valide les identifiants, génère un JWT contenant l'ID utilisateur et le rôle \texttt{INVESTOR}, puis le renvoie au frontend.
+	\item Lorsqu'il accède à la page de bidding, le frontend appelle un endpoint du type \texttt{/api/bidding/sections} avec le token JWT en en-tête \texttt{Authorization}.
+	\item Le filtre JWT du backend valide le token, injecte \texttt{userId} et \texttt{role} dans la requête ; \texttt{BiddingController} lit ces attributs et les transmet à \texttt{BiddingService}.
+	\item \texttt{BiddingService} interroge les repositories \texttt{SectionRepository} et \texttt{BidRepository} pour lister les sections éligibles à cet investisseur, puis renvoie un DTO listant les sections disponibles, leur état, les bids actuels, etc.
+	\item Lorsque l'investisseur place une enchère, une requête POST est envoyée vers \texttt{/api/bidding/bids}. Le service crée un nouvel objet \texttt{Bid}, vérifie les contraintes métier (section encore ouverte, montant minimal, etc.), sauvegarde la bid et renvoie un statut de succès.
+\end{enumerate}
+
+Un scénario similaire peut être décrit pour l'assistant LLM : l'utilisateur tape une question dans le chat, le frontend appelle \texttt{/api/assistant/analytics/query}, le backend construit le contexte analytique et renvoie une réponse en langage naturel.
+
+Ce chapitre a présenté la structure globale du backend Spring Boot d'Analify. Les chapitres suivants détaillent plus finement la conception du frontend, du module d'analytique et du module de bidding.

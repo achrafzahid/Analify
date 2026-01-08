@@ -1,0 +1,166 @@
+\chapter{Conception détaillée du frontend React/TypeScript}
+
+Dans ce chapitre, nous décrivons la conception et l'implémentation du frontend d'Analify, développé avec \textbf{React 18}, \textbf{TypeScript} et l'outillage moderne fourni par \textbf{Vite} et \textbf{Tailwind CSS}. L'objectif principal est d'offrir une expérience utilisateur fluide, réactive et agréable pour la consultation des tableaux de bord, la gestion du bidding et l'utilisation de l'assistant analytique.
+
+\section{Stack technique et outillage}
+
+Le frontend repose sur les éléments suivants :
+\begin{itemize}
+	\item \textbf{React 18} : bibliothèque JavaScript pour la construction d'interfaces utilisateur déclaratives et composables ;
+	\item \textbf{TypeScript} : surcouche typée de JavaScript permettant un meilleur outillage (auto-complétion, vérification statique) ;
+	\item \textbf{Vite} : outil de build et de développement rapide, offrant un rechargement à chaud performant ;
+	\item \textbf{Tailwind CSS} : framework CSS utilitaire, permettant de styliser rapidement les composants ;
+	\item \textbf{shadcn/ui} : collection de composants UI préconstruits, intégrés avec Tailwind ;
+	\item \textbf{React Router} : pour la gestion des routes (pages) ;
+	\item éventuellement \textbf{Axios} ou \texttt{fetch} encapsulé dans un service API maison pour les appels HTTP.
+\end{itemize}
+
+\section{Structure du projet frontend}
+
+Le code frontend se trouve dans le dossier \texttt{frontAnalify/}. La structure principale du dossier \texttt{src/} est la suivante :
+\begin{itemize}
+	\item \texttt{main.tsx} : point d'entrée de l'application React (montage dans le DOM, configuration du router, etc.) ;
+	\item \texttt{App.tsx} : composant racine, qui définit souvent la structure globale des routes ;
+	\item \texttt{pages/} : pages principales de l'application (Landing, Login, Dashboard et sous-pages) ;
+	\item \texttt{components/} : composants réutilisables (layout, shared, ui, charts, etc.) ;
+	\item \texttt{contexts/} : contextes React (par exemple \texttt{AuthContext}) ;
+	\item \texttt{services/api.ts} : service centralisé pour les appels HTTP vers le backend ;
+	\item \texttt{hooks/} : hooks personnalisés (par ex. \texttt{use-mobile}, \texttt{use-toast}) ;
+	\item \texttt{types/} : définitions TypeScript des types partagés (DTOs, réponses API, etc.).
+\end{itemize}
+
+Cette organisation favorise la séparation des responsabilités entre la navigation, la structure de présentation (layout), les composants métiers et la logique d'accès aux données.
+
+\section{Routing et pages principales}
+
+La navigation est gérée via \textbf{React Router}. Les routes typiques sont :
+\begin{itemize}
+	\item \texttt{/} : page d'accueil (\texttt{Landing.tsx}), qui présente brièvement Analify ;
+	\item \texttt{/login} : page de connexion (\texttt{Login.tsx}) ;
+	\item \texttt{/dashboard} : layout principal du tableau de bord ;
+	\item \texttt{/dashboard/statistics} : statistiques de base ;
+	\item \texttt{/dashboard/enhanced-statistics} : tableau de bord avancé ;
+	\item \texttt{/dashboard/products} : gestion/visualisation des produits et du stock ;
+	\item \texttt{/dashboard/orders} : suivi des commandes ;
+	\item \texttt{/dashboard/bidding} : module de bidding ;
+	\item \texttt{*} : page 404 (\texttt{NotFound.tsx}).
+\end{itemize}
+
+Chaque page de dashboard est rendue à l'intérieur d'un layout commun (\texttt{DashboardLayout.tsx}), qui contient la barre latérale de navigation, le header et l'assistant LLM.
+
+\section{Layouts et navigation}
+
+Le composant \texttt{DashboardLayout.tsx} joue un rôle central dans l'ergonomie du frontend :
+\begin{itemize}
+	\item il affiche une \textbf{sidebar} (issu de \texttt{components/layout/Sidebar.tsx}) avec les liens vers les différentes vues de dashboard ;
+	\item il gère la partie \textbf{contenu principal}, où les pages enfants sont rendues via le router ;
+	\item il intègre en permanence le composant \texttt{AnalyticsAssistant.tsx}, accessible via un bouton flottant ou un panneau latéral.
+\end{itemize}
+
+L'utilisation de Tailwind CSS et de shadcn/ui permet de construire rapidement des layouts responsive, adaptables aux différentes tailles d'écran (desktop, tablette, mobile). Des hooks comme \texttt{use-mobile} peuvent être utilisés pour adapter certains comportements en fonction de la largeur de l'écran.
+
+\section{Gestion de l'authentification côté frontend}
+
+L'authentification est gérée de la manière suivante :
+\begin{enumerate}
+	\item L'utilisateur saisit ses identifiants sur la page \texttt{Login.tsx} ;
+	\item Le formulaire envoie une requête POST vers l'endpoint backend de login via le service \texttt{api.ts} ;
+	\item En cas de succès, le backend renvoie un JWT, qui est stocké côté frontend (par exemple dans le \texttt{localStorage} ou dans un contexte React) ;
+	\item Le \texttt{AuthContext.tsx} expose un hook (par exemple \texttt{useAuth}) fournissant le token, les informations utilisateur (rôle, nom, etc.) et des fonctions \texttt{login} / \texttt{logout} ;
+	\item Toutes les requêtes ultérieures vers le backend passent par \texttt{api.ts}, qui ajoute l'en-tête \texttt{Authorization: Bearer <token>} si l'utilisateur est connecté.
+\end{enumerate}
+
+Des routes protégées peuvent être définies pour empêcher l'accès au dashboard sans être authentifié. Si le token est absent ou invalide, l'utilisateur est redirigé vers la page de connexion.
+
+\section{Service API centralisé}
+
+Le fichier \texttt{src/services/api.ts} centralise la logique d'appel au backend. Il définit :
+\begin{itemize}
+	\item une constante \texttt{API\_BASE\_URL} pointant vers l'URL du backend (par exemple \texttt{http://localhost:8081/api}) ;
+	\item une fonction générique (par ex. \texttt{apiRequest}) qui gère les méthodes HTTP, les en-têtes, la sérialisation JSON et la gestion d'erreurs ;
+	\item des fonctions plus haut niveau pour chaque ressource : \texttt{statisticsApi.getBasicDashboard()}, \texttt{biddingApi.getSections()}, \texttt{assistantApi.askQuestion()}, etc.
+\end{itemize}
+
+Cette centralisation facilite :
+\begin{itemize}
+	\item la gestion du token JWT (injection de l'en-tête Authorization) ;
+	\item la gestion cohérente des erreurs (par exemple, redirection vers \texttt{/login} en cas d'erreur 401) ;
+	\item la maintenance (changement d'URL de base ou d'implémentation HTTP en un seul endroit).
+\end{itemize}
+
+\section{Composants métiers du dashboard}
+
+Les pages de dashboard sont construites à partir de \textbf{composants métiers} et de composants UI génériques :
+\begin{itemize}
+	\item \textbf{StatCard} : petite carte affichant un KPI (titre, valeur, variation, icône) ;
+	\item \textbf{DataTable} : tableau de données configurable (colonnes, pagination, tri, filtres) ;
+	\item \textbf{FilterPanel} : panneau de filtres (période, magasin, catégorie, etc.) que l'utilisateur peut ajuster ;
+	\item \textbf{Chart components} (\texttt{AreaChartCard}, \texttt{BarChartCard}, \texttt{LineChartCard}, \texttt{PieChartCard}) : composants graphiques encapsulant les librairies de charting ;
+	\item \textbf{AnalyticsAssistant} : composant de chat pour interagir avec l'assistant LLM ;
+	\item \textbf{ProfileForm}, badges, menus, etc.
+\end{itemize}
+
+Par exemple, la page de statistiques avancées (\texttt{EnhancedStatistics.tsx}) combine plusieurs cartes de KPI, des graphiques temporels et des tableaux de \og top \fg{} (top produits, top magasins, etc.), chacun basé sur des composants réutilisables et alimentés par les DTO renvoyés par le backend.
+
+\section{Gestion des filtres et de l'état}
+
+Les filtres (période, magasin, catégorie, rôle, etc.) jouent un rôle central dans l'expérience utilisateur. Ils sont généralement gérés via :
+\begin{itemize}
+	\item des composants contrôlés (inputs, select, date pickers) ;
+	\item un état local ou global (hook React, \texttt{useState} ou \texttt{useReducer}) ;
+	\item des appels API paramétrés, par exemple en envoyant un \texttt{StatisticsFilterDTO} au backend.
+\end{itemize}
+
+Un schéma classique :
+\begin{enumerate}
+	\item L'utilisateur modifie un filtre dans \texttt{FilterPanel} ;
+	\item L'état local de la page est mis à jour ;
+	\item Un nouvel appel API est déclenché (par exemple via \texttt{useEffect}) avec les filtres mis à jour ;
+	\item Les composants graphiques et tableaux se mettent à jour avec les nouvelles données.
+\end{enumerate}
+
+Cette approche rend l'interface \textbf{réactive} aux actions de l'utilisateur tout en gardant une logique de filtrage centralisée côté backend.
+
+\section{Interface du module de bidding}
+
+La page \texttt{BiddingDashboard.tsx} (ou équivalent) permet aux investisseurs et administrateurs de visualiser et piloter les enchères. L'interface peut proposer :
+\begin{itemize}
+	\item une vue hiérarchique (catégories \textrightarrow{} rangs \textrightarrow{} faces \textrightarrow{} sections) ;
+	\item des cartes représentant les sections avec leur état (disponible, en cours d'enchère, gagnée, etc.) ;
+	\item des formulaires pour placer une nouvelle enchère (montant, durée, etc.) ;
+	\item éventuellement des indicateurs synthétiques : nombre de sections gagnées, montant total des bids, etc.
+\end{itemize}
+
+Le front se contente d'appeler les endpoints du backend (chapitre suivant) et de refléter l'état renvoyé (liste des bids, statut des sections) sous forme de composants interactifs.
+
+\section{Intégration de l'assistant analytique LLM}
+
+Le composant \texttt{AnalyticsAssistant.tsx} fournit une interface de chat intégrée au layout du dashboard. Il fonctionne de la manière suivante :
+\begin{enumerate}
+	\item L'utilisateur ouvre le panneau de chat (bouton flottant) ;
+	\item Il saisit une question métier (ex. : \og Quels sont mes produits en low stock ce mois-ci ? \fg{}) ;
+	\item Le composant envoie la question à l'endpoint backend de l'assistant via \texttt{assistantApi.askQuestion} ;
+	\item La réponse (texte + métadonnées) est affichée sous forme de bulles de conversation ;
+	\item Des badges peuvent indiquer des informations complémentaires (rôle, nombre de produits en low stock, type d'erreur éventuelle côté LLM).
+\end{enumerate}
+
+Le composant gère également :
+\begin{itemize}
+	\item un état de chargement (spinner ou indicateur \og L'assistant réfléchit... \fg{}) ;
+	\item une gestion des erreurs (message utilisateur si le backend renvoie un statut d'erreur ou des métadonnées \og QUOTA\_EXCEEDED \fg{}, \og AUTH\_ERROR \fg{}, etc.) ;
+	\item l'historique local de la conversation pendant la session de navigation.
+\end{itemize}
+
+L'intégration de l'assistant dans le layout global le rend toujours accessible, que l'utilisateur soit sur la page statistiques, produits, bidding ou commandes.
+
+\section{Expérience utilisateur et responsive design}
+
+Analify vise une expérience utilisateur moderne :
+\begin{itemize}
+	\item design épuré et cohérent grâce à Tailwind et shadcn/ui ;
+	\item affichage de feedbacks clairs (toasts de succès/erreur, messages d'erreur au niveau des formulaires) ;
+	\item support des écrans de différentes tailles (menus repliables sur mobile, colonnes de tableaux adaptatives) ;
+	\item utilisation de skeletons ou placeholders pour indiquer le chargement de données.
+\end{itemize}
+
+Les prochaines sections du rapport (chapitres sur l'analytique et le bidding) détaillent la manière dont ces interfaces consomment les API backend pour afficher des statistiques et gérer les enchères.
