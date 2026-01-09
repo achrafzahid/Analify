@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Edit2, Package, RefreshCw, Loader2 } from 'lucide-react';
+import { Edit2, Package, RefreshCw, Loader2, Plus } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ import { FilterPanel } from '@/components/shared/FilterPanel';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Product, FilterConfig, SearchConfig } from '@/types';
-import { productsApi, UpdateProductRequest, UpdateStockRequest } from '@/services/api';
+import { productsApi, UpdateProductRequest, UpdateStockRequest, CreateProductRequest } from '@/services/api';
 
 const MAX_STOCK = 500;
 
@@ -35,6 +35,7 @@ const Products: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isStockDialogOpen, setIsStockDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -111,6 +112,27 @@ const Products: React.FC = () => {
     { field: 'quantity', label: 'Quantity Range', type: 'number-range' },
   ], [uniqueCategories, uniqueSubcategories]);
 
+  // Create product mutation
+  const createMutation = useMutation({
+    mutationFn: (data: CreateProductRequest) => productsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast({
+        title: 'Product Created',
+        description: 'New product has been added successfully.',
+      });
+      setIsCreateOpen(false);
+      setFormData({});
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create product',
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Apply client-side filtering
   const products = allProducts.filter(product => {
     // Apply category filter
@@ -136,6 +158,7 @@ const Products: React.FC = () => {
     return true;
   });
 
+  // Update product mutation
   // Update product mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateProductRequest }) => 
@@ -178,6 +201,11 @@ const Products: React.FC = () => {
       });
     },
   });
+
+  const handleCreate = () => {
+    setFormData({});
+    setIsCreateOpen(true);
+  };
 
   const handleEdit = (product: Product) => {
     setSelectedProduct(product);
@@ -233,11 +261,29 @@ const Products: React.FC = () => {
 
   const handleSave = () => {
     if (selectedProduct) {
+      // Update existing product
       const updateData: UpdateProductRequest = {
         productName: formData.productName,
         price: formData.price,
       };
       updateMutation.mutate({ id: selectedProduct.productId, data: updateData });
+    } else {
+      // Create new product
+      if (!formData.productName || !formData.price || !formData.subId) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please fill in all required fields (Product Name, Price, Subcategory ID).',
+          variant: 'destructive',
+        });
+        return;
+      }
+      const createData: CreateProductRequest = {
+        productName: formData.productName,
+        price: formData.price,
+        subId: formData.subId,
+        investorId: user?.userId || 0,
+      };
+      createMutation.mutate(createData);
     }
   };
 
@@ -316,9 +362,15 @@ const Products: React.FC = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <h1 className="page-title">My Products</h1>
-        <p className="page-description">Manage your product inventory</p>
+      <div className="page-header flex items-center justify-between">
+        <div>
+          <h1 className="page-title">My Products</h1>
+          <p className="page-description">Manage your product inventory</p>
+        </div>
+        <Button onClick={handleCreate}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Product
+        </Button>
       </div>
 
       <FilterPanel
@@ -329,6 +381,74 @@ const Products: React.FC = () => {
       />
 
       <DataTable columns={columns} data={products} />
+
+      {/* Create Dialog */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Add New Product
+            </DialogTitle>
+            <DialogDescription>Create a new product in the inventory</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Product Name</Label>
+              <Input
+                value={formData.productName || ''}
+                onChange={(e) =>
+                  setFormData(prev => ({ ...prev, productName: e.target.value }))
+                }
+                placeholder="Enter product name"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Price</Label>
+                <Input
+                  type="number"
+                  step={0.01}
+                  value={formData.price || ''}
+                  onChange={(e) =>
+                    setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))
+                  }
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Subcategory ID</Label>
+                <Input
+                  type="number"
+                  value={formData.subId || ''}
+                  onChange={(e) =>
+                    setFormData(prev => ({ ...prev, subId: parseInt(e.target.value) || 0 }))
+                  }
+                  placeholder="Enter subcategory ID"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={createMutation.isPending}>
+              {createMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Product'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -352,7 +472,7 @@ const Products: React.FC = () => {
               <Input
                 value={formData.productName || ''}
                 onChange={(e) =>
-                  setFormData({ ...formData, productName: e.target.value })
+                  setFormData(prev => ({ ...prev, productName: e.target.value }))
                 }
               />
             </div>
@@ -365,7 +485,7 @@ const Products: React.FC = () => {
                   step={0.01}
                   value={formData.price || ''}
                   onChange={(e) =>
-                    setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
+                    setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))
                   }
                 />
               </div>
@@ -375,7 +495,7 @@ const Products: React.FC = () => {
                   type="number"
                   value={formData.quantity || ''}
                   onChange={(e) =>
-                    setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })
+                    setFormData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))
                   }
                 />
               </div>

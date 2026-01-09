@@ -59,6 +59,103 @@ const roleLabels: Record<UserRole, string> = {
   ADMIN_G: 'General Admin',
 };
 
+// Define EmployeeForm component outside to prevent re-creation on every render
+const EmployeeFormComponent: React.FC<{
+  formData: Partial<EmployeeCreate & EmployeeUpdate>;
+  setFormData: React.Dispatch<React.SetStateAction<Partial<EmployeeCreate & EmployeeUpdate>>>;
+  isCreate: boolean;
+  isGeneralAdmin: boolean;
+}> = ({ formData, setFormData, isCreate, isGeneralAdmin }) => (
+  <div className="space-y-4">
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label>Username</Label>
+        <Input
+          value={formData.userName || ''}
+          onChange={(e) => setFormData(prev => ({ ...prev, userName: e.target.value }))}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Email</Label>
+        <Input
+          type="email"
+          value={formData.mail || ''}
+          onChange={(e) => setFormData(prev => ({ ...prev, mail: e.target.value }))}
+        />
+      </div>
+    </div>
+
+    {/* Password field - required for new employees, optional for updates */}
+    <div className="space-y-2">
+      <Label>{isCreate ? 'Password' : 'New Password (leave empty to keep current)'}</Label>
+      <Input
+        type="password"
+        placeholder={isCreate ? 'Enter password' : 'Leave empty to keep current password'}
+        value={formData.password || ''}
+        onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+      />
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label>Date of Birth</Label>
+        <Input
+          type="date"
+          value={formData.dateOfBirth || ''}
+          onChange={(e) => setFormData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Salary</Label>
+        <Input
+          type="number"
+          value={formData.salary || ''}
+          onChange={(e) =>
+            setFormData(prev => ({ ...prev, salary: parseFloat(e.target.value) || 0 }))
+          }
+        />
+      </div>
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label>Role</Label>
+        <Select
+          value={formData.role}
+          onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as UserRole }))}
+          disabled={!isGeneralAdmin && !isCreate}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="CAISSIER">Cashier</SelectItem>
+            <SelectItem value="ADMIN_STORE">Store Admin</SelectItem>
+            {isGeneralAdmin && (
+              <>
+                <SelectItem value="INVESTOR">Investor</SelectItem>
+                <SelectItem value="ADMIN_GENERAL">General Admin</SelectItem>
+              </>
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+      {isGeneralAdmin && (
+        <div className="space-y-2">
+          <Label>Store ID</Label>
+          <Input
+            type="number"
+            value={formData.storeId || ''}
+            onChange={(e) =>
+              setFormData(prev => ({ ...prev, storeId: parseInt(e.target.value) || undefined }))
+            }
+          />
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 const Employees: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -268,97 +365,6 @@ const Employees: React.FC = () => {
     },
   ];
 
-  const EmployeeForm = ({ isCreate = false }: { isCreate?: boolean }) => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Username</Label>
-          <Input
-            value={formData.userName || ''}
-            onChange={(e) => setFormData({ ...formData, userName: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Email</Label>
-          <Input
-            type="email"
-            value={formData.mail || ''}
-            onChange={(e) => setFormData({ ...formData, mail: e.target.value })}
-          />
-        </div>
-      </div>
-
-      {/* Password field - required for new employees, optional for updates */}
-      <div className="space-y-2">
-        <Label>{isCreate ? 'Password' : 'New Password (leave empty to keep current)'}</Label>
-        <Input
-          type="password"
-          placeholder={isCreate ? 'Enter password' : 'Leave empty to keep current password'}
-          value={formData.password || ''}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Date of Birth</Label>
-          <Input
-            type="date"
-            value={formData.dateOfBirth || ''}
-            onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Salary</Label>
-          <Input
-            type="number"
-            value={formData.salary || ''}
-            onChange={(e) =>
-              setFormData({ ...formData, salary: parseFloat(e.target.value) || 0 })
-            }
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Role</Label>
-          <Select
-            value={formData.role}
-            onValueChange={(value) => setFormData({ ...formData, role: value as UserRole })}
-            disabled={!isGeneralAdmin && !isCreate}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="CAISSIER">Cashier</SelectItem>
-              <SelectItem value="ADMIN_STORE">Store Admin</SelectItem>
-              {isGeneralAdmin && (
-                <>
-                  <SelectItem value="INVESTOR">Investor</SelectItem>
-                  <SelectItem value="ADMIN_GENERAL">General Admin</SelectItem>
-                </>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-        {isGeneralAdmin && (
-          <div className="space-y-2">
-            <Label>Store ID</Label>
-            <Input
-              type="number"
-              value={formData.storeId || ''}
-              onChange={(e) =>
-                setFormData({ ...formData, storeId: parseInt(e.target.value) || undefined })
-              }
-            />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -416,7 +422,12 @@ const Employees: React.FC = () => {
               Enter the details for the new employee
             </DialogDescription>
           </DialogHeader>
-          <EmployeeForm isCreate={true} />
+          <EmployeeFormComponent 
+            formData={formData}
+            setFormData={setFormData}
+            isCreate={true}
+            isGeneralAdmin={isGeneralAdmin}
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
               Cancel
@@ -446,7 +457,12 @@ const Employees: React.FC = () => {
             <Label className="text-muted-foreground">Employee ID</Label>
             <Input value={selectedEmployee?.userId} disabled className="bg-muted" />
           </div>
-          <EmployeeForm isCreate={false} />
+          <EmployeeFormComponent 
+            formData={formData}
+            setFormData={setFormData}
+            isCreate={false}
+            isGeneralAdmin={isGeneralAdmin}
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditOpen(false)}>
               Cancel

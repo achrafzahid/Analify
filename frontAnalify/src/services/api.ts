@@ -214,7 +214,7 @@ export interface ProductFilters {
 export interface CreateProductRequest {
   productName: string;
   price: number;
-  subcategoryId: number;
+  subId: number;
   investorId: number;
 }
 
